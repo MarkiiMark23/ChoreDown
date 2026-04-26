@@ -1,0 +1,13 @@
+{
+  "name": "TaskDown",
+  "short_name": "TaskDown",
+  "description": "Family task and rewards tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#6C63FF",
+  "theme_color": "#6C63FF",
+  "icons": [
+    {"src": "/static/core/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/core/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

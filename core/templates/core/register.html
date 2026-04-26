@@ -1,0 +1,60 @@
+{% extends 'core/base.html' %}
+{% block title %}Create Account — TaskDown{% endblock %}
+{% block content %}
+<div class="auth-card auth-card--wide">
+  <div class="auth-logo">⚡</div>
+  <h1 class="auth-title">Create parent account</h1>
+  <p class="auth-sub">You'll add your kids after signing up.</p>
+  <form method="post" class="auth-form">
+    {% csrf_token %}
+    <div class="form-row">
+      <div class="form-group">
+        <label>First Name</label>
+        {{ form.first_name }}
+      </div>
+      <div class="form-group">
+        <label>Last Name</label>
+        {{ form.last_name }}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      {{ form.username }}
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      {{ form.email }}
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Password</label>
+        {{ form.password }}
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        {{ form.confirm_password }}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Pick your colour</label>
+      <div class="color-picker">
+        {% for value, label in form.avatar_color.field.choices %}
+          <label class="color-option">
+            <input type="radio" name="avatar_color" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+            <span class="color-swatch" style="background:{{ value }}" title="{{ label }}"></span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% if form.errors %}
+      <div class="alert alert-error">
+        {% for field, errors in form.errors.items %}
+          {% for error in errors %}{{ error }}<br>{% endfor %}
+        {% endfor %}
+      </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+  </form>
+  <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'core/base.html' %}
+{% block title %}Behavior Log — TaskDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Behavior Log</h1>
+  <a href="{% url 'behavior_log' %}" class="btn btn-primary">+ Log</a>
+</div>
+
+{% if behaviors %}
+  {% for b in behaviors %}
+  <div class="behavior-card behavior-{{ b.behavior_type }}">
+    <div class="behavior-icon">{% if b.behavior_type == 'positive' %}⭐{% else %}⚠️{% endif %}</div>
+    <div class="behavior-body">
+      <div class="behavior-who">{{ b.associated_with.first_name|default:b.associated_with.username }}</div>
+      <div class="behavior-desc">{{ b.description }}</div>
+      <div class="behavior-meta">{{ b.date_logged|date:"M j, g:i A" }}</div>
+    </div>
+    <div class="behavior-pts {% if b.behavior_type == 'positive' %}pts-positive{% else %}pts-negative{% endif %}">
+      {% if b.behavior_type == 'positive' %}+{% else %}−{% endif %}{{ b.points_value }}
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">⭐</div>
+    <h2>No behaviors logged</h2>
+    <p>Log positive and negative behaviors to adjust your kids' points.</p>
+    <a href="{% url 'behavior_log' %}" class="btn btn-primary">Log a Behavior</a>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'core/base.html' %}
+{% block title %}Reward Requests — TaskDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🎁 Reward Requests</h1>
+</div>
+
+{% if pending %}
+<section class="section">
+  <h2>Pending</h2>
+  {% for r in pending %}
+  <div class="redemption-card redemption-card--pending">
+    <div class="redemption-info">
+      <span class="reward-icon-lg">{{ r.reward.icon }}</span>
+      <div>
+        <div class="redemption-name"><strong>{{ r.kid.first_name|default:r.kid.username }}</strong> wants <strong>{{ r.reward.title }}</strong></div>
+        <div class="redemption-meta">{{ r.reward.points_cost }} pts · Requested {{ r.requested_at|date:"M j, g:i A" }}</div>
+      </div>
+    </div>
+    <div class="redemption-actions">
+      <a href="{% url 'redemption_resolve' r.pk 'approve' %}" class="btn btn-green">✓ Approve</a>
+      <a href="{% url 'redemption_resolve' r.pk 'deny' %}" class="btn btn-danger">✗ Deny</a>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% else %}
+<div class="empty-state empty-state--small">
+  <div class="empty-icon">✅</div>
+  <p>No pending requests right now.</p>
+</div>
+{% endif %}
+
+{% if resolved %}
+<section class="section">
+  <h2>Recent History</h2>
+  {% for r in resolved %}
+  <div class="redemption-card redemption-card--{{ r.status }}">
+    <div class="redemption-info">
+      <span class="reward-icon-lg">{{ r.reward.icon }}</span>
+      <div>
+        <div class="redemption-name">{{ r.kid.first_name|default:r.kid.username }} — {{ r.reward.title }}</div>
+        <div class="redemption-meta">{{ r.reward.points_cost }} pts · {{ r.resolved_at|date:"M j" }}</div>
+      </div>
+    </div>
+    <span class="badge {% if r.status == 'approved' %}badge-green{% else %}badge-danger{% endif %}">
+      {{ r.get_status_display }}
+    </span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

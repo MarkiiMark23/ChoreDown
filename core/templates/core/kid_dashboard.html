@@ -1,0 +1,111 @@
+{% extends 'core/base.html' %}
+{% block title %}My Dashboard — TaskDown{% endblock %}
+{% block content %}
+
+<!-- Points hero -->
+<div class="kid-hero">
+  <div class="kid-hero-avatar" style="background:{{ user.avatar_color }}">
+    {{ user.first_name|first|upper|default:user.username|first|upper }}
+  </div>
+  <h1 class="kid-hero-name">{{ user.first_name|default:user.username }}</h1>
+  <div class="kid-points-display">
+    <span class="star-burst">⭐</span>
+    <span class="kid-points-number">{{ user.points }}</span>
+    <span class="kid-points-label">points</span>
+  </div>
+  {% if affordable_rewards %}
+    <p class="kid-can-afford">🎉 You can afford {{ affordable_rewards|length }} reward{{ affordable_rewards|length|pluralize }}!</p>
+  {% endif %}
+</div>
+
+<!-- My tasks -->
+<section class="section">
+  <div class="section-header">
+    <h2>My Tasks</h2>
+    <span class="badge badge-purple">{{ pending_tasks|length }} left</span>
+  </div>
+  {% if pending_tasks %}
+    {% for task in pending_tasks %}
+    <div class="kid-task-card priority-{{ task.priority }}">
+      <div class="kid-task-top">
+        <span class="cat-emoji">{% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}</span>
+        <div class="kid-task-info">
+          <div class="kid-task-title">{{ task.title }}</div>
+          {% if task.description %}
+          <div class="kid-task-desc">{{ task.description }}</div>
+          {% endif %}
+          <div class="kid-task-meta">Due: {{ task.due_date|date:"M j, g:i A" }}</div>
+        </div>
+        <div class="kid-task-points">+{{ task.points_value }}<span>pts</span></div>
+      </div>
+      <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-full btn-complete">
+        Mark Done ✓
+      </a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state empty-state--small">
+      <div class="empty-icon">🎉</div>
+      <p>All done! No tasks right now.</p>
+    </div>
+  {% endif %}
+</section>
+
+<!-- Leaderboard preview -->
+{% if siblings|length > 1 %}
+<section class="section">
+  <div class="section-header">
+    <h2>🏆 Leaderboard</h2>
+    <a href="{% url 'leaderboard' %}" class="btn btn-sm btn-outline">Full Board</a>
+  </div>
+  {% for sib in siblings %}
+  <div class="leaderboard-row {% if sib == user %}leaderboard-row--me{% endif %}">
+    <span class="lb-rank">{{ forloop.counter }}</span>
+    <div class="lb-avatar" style="background:{{ sib.avatar_color }}">
+      {{ sib.first_name|first|upper|default:sib.username|first|upper }}
+    </div>
+    <span class="lb-name">{{ sib.first_name|default:sib.username }}{% if sib == user %} (you){% endif %}</span>
+    <span class="lb-points">⭐ {{ sib.points }}</span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<!-- Rewards preview -->
+{% if available_rewards %}
+<section class="section">
+  <div class="section-header">
+    <h2>🎁 Rewards</h2>
+    <a href="{% url 'reward_list' %}" class="btn btn-sm btn-outline">See All</a>
+  </div>
+  <div class="rewards-row">
+    {% for reward in available_rewards|slice:":4" %}
+    <div class="reward-preview {% if reward.points_cost > user.points %}reward-locked{% endif %}">
+      <div class="reward-preview-icon">{{ reward.icon }}</div>
+      <div class="reward-preview-title">{{ reward.title }}</div>
+      <div class="reward-preview-cost">{{ reward.points_cost }} pts</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- Recent history -->
+{% if recent_transactions %}
+<section class="section">
+  <div class="section-header">
+    <h2>Recent Points</h2>
+  </div>
+  {% for tx in recent_transactions %}
+  <div class="tx-row">
+    <span class="tx-icon">{% if tx.amount > 0 %}⬆️{% else %}⬇️{% endif %}</span>
+    <span class="tx-desc">{{ tx.description }}</span>
+    <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% else %}tx-negative{% endif %}">
+      {% if tx.amount > 0 %}+{% endif %}{{ tx.amount }}
+    </span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% endblock %}

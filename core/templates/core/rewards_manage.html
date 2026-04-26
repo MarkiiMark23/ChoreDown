@@ -1,0 +1,33 @@
+{% extends 'core/base.html' %}
+{% block title %}Manage Rewards — TaskDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🎁 Rewards</h1>
+  <a href="{% url 'reward_create' %}" class="btn btn-primary">+ Add Reward</a>
+</div>
+
+{% if rewards %}
+  <div class="rewards-grid">
+    {% for reward in rewards %}
+    <div class="reward-card {% if not reward.is_active %}reward-card--inactive{% endif %}">
+      <div class="reward-card-icon">{{ reward.icon }}</div>
+      <div class="reward-card-title">{{ reward.title }}</div>
+      {% if reward.description %}
+      <div class="reward-card-desc">{{ reward.description }}</div>
+      {% endif %}
+      <div class="reward-card-cost">{{ reward.points_cost }} pts</div>
+      {% if not reward.is_active %}
+        <span class="badge badge-grey">Inactive</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🎁</div>
+    <h2>No rewards yet</h2>
+    <p>Create rewards your kids can spend their points on.</p>
+    <a href="{% url 'reward_create' %}" class="btn btn-primary">Add First Reward</a>
+  </div>
+{% endif %}
+{% endblock %}
