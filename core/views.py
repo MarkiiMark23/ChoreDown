@@ -19,12 +19,8 @@ from .serializers import (
     UserRegistrationSerializer, KidSummarySerializer,
 )
 from .permissions import IsParent, IsKid
-from .forms import ParentRegistrationForm, AddKidForm, TaskCreateForm, BehaviorLogForm, RewardCreateForm, TaskCompleteForm
+from .forms import ParentRegistrationForm, AddKidForm, TaskCreateForm, BehaviorLogForm, RewardCreateForm, TaskCompleteForm, ProfileEditForm
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _award_points(user, amount, transaction_type, description):
     """Add or subtract points and record the transaction."""
@@ -37,10 +33,6 @@ def _award_points(user, amount, transaction_type, description):
         description=description,
     )
 
-
-# ---------------------------------------------------------------------------
-# Auth views
-# ---------------------------------------------------------------------------
 
 def home_view(request):
     if request.user.is_authenticated:
@@ -68,16 +60,23 @@ def register_view(request):
         return redirect('dashboard')
     form = ParentRegistrationForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
-        user = form.save()
+        user = form.save(commit=False)
+        join_code = form.cleaned_data.get('join_family_code', '').strip().upper()
+        if join_code:
+            try:
+                head = CustomUser.objects.get(
+                    family_code=join_code, is_parent=True, parent_account=None
+                )
+                user.parent_account = head
+            except CustomUser.DoesNotExist:
+                form.add_error('join_family_code', 'Invalid family code — check with your partner.')
+                return render(request, 'core/register.html', {'form': form})
+        user.save()
         login(request, user)
         messages.success(request, f"Welcome, {user.first_name or user.username}! Add your kids to get started.")
         return redirect('dashboard')
     return render(request, 'core/register.html', {'form': form})
 
-
-# ---------------------------------------------------------------------------
-# Dashboard
-# ---------------------------------------------------------------------------
 
 @login_required
 def dashboard_view(request):
@@ -92,25 +91,22 @@ def dashboard_view(request):
 def parent_dashboard_view(request):
     if not request.user.is_parent:
         return redirect('kid_dashboard')
-    kids = request.user.children.filter(is_kid=True)
+    head = request.user.get_family_head()
+    kids = request.user.get_family_kids()
     pending_redemptions = RewardRedemption.objects.filter(
-        reward__parent=request.user, status='pending'
+        reward__parent=head, status='pending'
     ).select_related('kid', 'reward').order_by('-requested_at')
     recent_tasks = Task.objects.filter(
-        parent=request.user
+        parent=head
     ).select_related('assigned_to').order_by('-id')[:10]
-    recent_behaviors = Behavior.objects.filter(
-        logged_by=request.user
-    ).select_related('associated_with').order_by('-date_logged')[:5]
     kids_sorted = kids.order_by('-points')
     context = {
         'kids': kids,
         'kids_sorted': kids_sorted,
         'pending_redemptions': pending_redemptions,
         'recent_tasks': recent_tasks,
-        'recent_behaviors': recent_behaviors,
         'total_tasks_today': Task.objects.filter(
-            parent=request.user,
+            parent=head,
             completed=True,
             completed_at__date=timezone.now().date()
         ).count(),
@@ -123,18 +119,15 @@ def kid_dashboard_view(request):
     if not request.user.is_kid:
         return redirect('parent_dashboard')
     kid = request.user
+    head = kid.get_family_head()
     pending_tasks = Task.objects.filter(assigned_to=kid, completed=False).order_by('due_date')
     completed_tasks = Task.objects.filter(assigned_to=kid, completed=True).order_by('-completed_at')[:5]
     recent_transactions = kid.point_transactions.all()[:8]
     available_rewards = []
-    if kid.parent_account:
-        available_rewards = Reward.objects.filter(
-            parent=kid.parent_account, is_active=True
-        ).order_by('points_cost')
+    if kid.parent_account_id:
+        available_rewards = Reward.objects.filter(parent=head, is_active=True).order_by('points_cost')
     pending_redemptions = RewardRedemption.objects.filter(kid=kid, status='pending')
-    siblings = []
-    if kid.parent_account:
-        siblings = kid.parent_account.children.filter(is_kid=True).order_by('-points')
+    siblings = kid.get_family_kids().order_by('-points') if kid.parent_account_id else []
     context = {
         'kid': kid,
         'pending_tasks': pending_tasks,
@@ -148,10 +141,6 @@ def kid_dashboard_view(request):
     return render(request, 'core/kid_dashboard.html', context)
 
 
-# ---------------------------------------------------------------------------
-# Kid management (parent)
-# ---------------------------------------------------------------------------
-
 @login_required
 def add_kid_view(request):
     if not request.user.is_parent:
@@ -164,14 +153,12 @@ def add_kid_view(request):
     return render(request, 'core/add_kid.html', {'form': form})
 
 
-# ---------------------------------------------------------------------------
-# Task views
-# ---------------------------------------------------------------------------
-
 @login_required
 def task_list_view(request):
     if request.user.is_parent:
-        tasks = Task.objects.filter(parent=request.user).select_related('assigned_to').order_by('-id')
+        tasks = Task.objects.filter(
+            parent=request.user.get_family_head()
+        ).select_related('assigned_to').order_by('-id')
     else:
         tasks = Task.objects.filter(assigned_to=request.user).order_by('due_date')
     return render(request, 'core/tasks.html', {'tasks': tasks})
@@ -184,7 +171,7 @@ def task_create_view(request):
     form = TaskCreateForm(request.user, request.POST or None)
     if request.method == 'POST' and form.is_valid():
         task = form.save(commit=False)
-        task.parent = request.user
+        task.parent = request.user.get_family_head()
         task.save()
         messages.success(request, f"Task '{task.title}' assigned!")
         return redirect('task_list')
@@ -224,16 +211,13 @@ def task_complete_view(request, pk):
     return render(request, 'core/task_complete.html', {'task': task, 'form': form})
 
 
-# ---------------------------------------------------------------------------
-# Behavior views
-# ---------------------------------------------------------------------------
-
 @login_required
 def behavior_list_view(request):
     if not request.user.is_parent:
         return redirect('dashboard')
+    family_kid_ids = request.user.get_family_kids().values_list('id', flat=True)
     behaviors = Behavior.objects.filter(
-        logged_by=request.user
+        associated_with_id__in=family_kid_ids
     ).select_related('associated_with').order_by('-date_logged')
     return render(request, 'core/behaviors.html', {'behaviors': behaviors})
 
@@ -259,19 +243,16 @@ def behavior_log_view(request):
     return render(request, 'core/behavior_log.html', {'form': form})
 
 
-# ---------------------------------------------------------------------------
-# Reward views
-# ---------------------------------------------------------------------------
-
 @login_required
 def reward_list_view(request):
     if request.user.is_parent:
-        rewards = Reward.objects.filter(parent=request.user).order_by('points_cost')
+        head = request.user.get_family_head()
+        rewards = Reward.objects.filter(parent=head).order_by('points_cost')
         return render(request, 'core/rewards_manage.html', {'rewards': rewards})
-    # Kid view
-    if not request.user.parent_account:
+    if not request.user.parent_account_id:
         return render(request, 'core/rewards.html', {'rewards': [], 'no_parent': True})
-    rewards = Reward.objects.filter(parent=request.user.parent_account, is_active=True).order_by('points_cost')
+    head = request.user.get_family_head()
+    rewards = Reward.objects.filter(parent=head, is_active=True).order_by('points_cost')
     pending_ids = set(
         RewardRedemption.objects.filter(kid=request.user, status='pending').values_list('reward_id', flat=True)
     )
@@ -289,7 +270,7 @@ def reward_create_view(request):
     form = RewardCreateForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         reward = form.save(commit=False)
-        reward.parent = request.user
+        reward.parent = request.user.get_family_head()
         reward.save()
         messages.success(request, f"Reward '{reward.title}' created!")
         return redirect('reward_list')
@@ -315,19 +296,16 @@ def reward_redeem_view(request, pk):
     return render(request, 'core/reward_redeem_confirm.html', {'reward': reward})
 
 
-# ---------------------------------------------------------------------------
-# Redemption management (parent)
-# ---------------------------------------------------------------------------
-
 @login_required
 def redemption_list_view(request):
     if not request.user.is_parent:
         return redirect('dashboard')
+    head = request.user.get_family_head()
     pending = RewardRedemption.objects.filter(
-        reward__parent=request.user, status='pending'
+        reward__parent=head, status='pending'
     ).select_related('kid', 'reward').order_by('-requested_at')
     resolved = RewardRedemption.objects.filter(
-        reward__parent=request.user
+        reward__parent=head
     ).exclude(status='pending').select_related('kid', 'reward').order_by('-resolved_at')[:20]
     return render(request, 'core/redemptions.html', {'pending': pending, 'resolved': resolved})
 
@@ -336,7 +314,8 @@ def redemption_list_view(request):
 def redemption_resolve_view(request, pk, action):
     if not request.user.is_parent:
         return redirect('dashboard')
-    redemption = get_object_or_404(RewardRedemption, pk=pk, reward__parent=request.user, status='pending')
+    head = request.user.get_family_head()
+    redemption = get_object_or_404(RewardRedemption, pk=pk, reward__parent=head, status='pending')
     if action not in ('approve', 'deny'):
         return redirect('redemption_list')
     with db_transaction.atomic():
@@ -357,34 +336,43 @@ def redemption_resolve_view(request, pk, action):
     return redirect('redemption_list')
 
 
-# ---------------------------------------------------------------------------
-# Leaderboard
-# ---------------------------------------------------------------------------
-
 @login_required
 def leaderboard_view(request):
-    if request.user.is_parent:
-        kids = request.user.children.filter(is_kid=True).order_by('-points')
-    else:
-        kids = []
-        if request.user.parent_account:
-            kids = request.user.parent_account.children.filter(is_kid=True).order_by('-points')
+    kids = request.user.get_family_kids().order_by('-points')
     return render(request, 'core/leaderboard.html', {'kids': kids, 'current_kid': request.user})
 
 
-# ---------------------------------------------------------------------------
-# Profile
-# ---------------------------------------------------------------------------
-
 @login_required
 def profile_view(request):
-    transactions = request.user.point_transactions.all()[:20]
-    return render(request, 'core/profile.html', {'transactions': transactions})
+    user = request.user
+    transactions = user.point_transactions.all()[:20]
+    stats = {}
+    if user.is_kid:
+        stats['tasks_done'] = Task.objects.filter(assigned_to=user, completed=True).count()
+        stats['tasks_pending'] = Task.objects.filter(assigned_to=user, completed=False).count()
+        stats['rewards_redeemed'] = RewardRedemption.objects.filter(kid=user, status='approved').count()
+        stats['total_earned'] = sum(
+            t.amount for t in user.point_transactions.filter(amount__gt=0)
+        )
+    if user.is_parent:
+        head = user.get_family_head()
+        kids = user.get_family_kids()
+        stats['kids_count'] = kids.count()
+        stats['tasks_total'] = Task.objects.filter(parent=head).count()
+        stats['tasks_done'] = Task.objects.filter(parent=head, completed=True).count()
+        stats['rewards_created'] = Reward.objects.filter(parent=head).count()
+    return render(request, 'core/profile.html', {'transactions': transactions, 'stats': stats})
 
 
-# ---------------------------------------------------------------------------
-# API views
-# ---------------------------------------------------------------------------
+@login_required
+def profile_edit_view(request):
+    form = ProfileEditForm(request.POST or None, instance=request.user)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, "Profile updated!")
+        return redirect('profile')
+    return render(request, 'core/profile_edit.html', {'form': form})
+
 
 class TaskCompleteAPIView(generics.UpdateAPIView):
     queryset = Task.objects.all()
@@ -446,12 +434,7 @@ class LeaderboardAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.is_parent:
-            kids = request.user.children.filter(is_kid=True).order_by('-points')
-        elif request.user.parent_account:
-            kids = request.user.parent_account.children.filter(is_kid=True).order_by('-points')
-        else:
-            kids = CustomUser.objects.none()
+        kids = request.user.get_family_kids().order_by('-points')
         serializer = KidSummarySerializer(kids, many=True)
         return Response(serializer.data)
 
@@ -461,10 +444,10 @@ class RewardListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_kid and self.request.user.parent_account:
-            return Reward.objects.filter(parent=self.request.user.parent_account, is_active=True)
+        if self.request.user.is_kid and self.request.user.parent_account_id:
+            return Reward.objects.filter(parent=self.request.user.get_family_head(), is_active=True)
         if self.request.user.is_parent:
-            return Reward.objects.filter(parent=self.request.user)
+            return Reward.objects.filter(parent=self.request.user.get_family_head())
         return Reward.objects.none()
 
 
