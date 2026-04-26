@@ -1,0 +1,48 @@
+{% extends 'core/base.html' %}
+{% block title %}Log Behavior — TaskDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{% url 'behavior_list' %}" class="back-btn">← Back</a>
+  <h1 class="page-title">Log Behavior</h1>
+</div>
+
+<div class="form-card">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label>Which kid?</label>
+      {{ form.associated_with }}
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <div class="behavior-type-picker">
+        <label class="behavior-type-opt behavior-type-positive">
+          <input type="radio" name="behavior_type" value="positive" checked>
+          <span>⭐ Positive</span>
+        </label>
+        <label class="behavior-type-opt behavior-type-negative">
+          <input type="radio" name="behavior_type" value="negative">
+          <span>⚠️ Negative</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>What happened?</label>
+      {{ form.description }}
+    </div>
+    <div class="form-group">
+      <label>Points</label>
+      {{ form.points_value }}
+      <span class="field-hint">Positive adds points, negative removes them.</span>
+    </div>
+    {% if form.errors %}
+    <div class="alert alert-error">
+      {% for field, errors in form.errors.items %}
+        {% for error in errors %}{{ error }}<br>{% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary btn-full">Log Behavior</button>
+  </form>
+</div>
+{% endblock %}

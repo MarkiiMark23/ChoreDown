@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6C63FF">
+  <title>{% block title %}TaskDown{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'core/styles.css' %}">
+  <link rel="manifest" href="{% static 'core/manifest.json' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="{% if user.is_authenticated and user.is_kid %}kid-theme{% endif %}">
+
+  {% if user.is_authenticated %}
+  <header class="app-header">
+    <div class="header-inner">
+      <a href="{% url 'dashboard' %}" class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">TaskDown</span>
+      </a>
+      <div class="header-right">
+        {% if user.is_kid %}
+          <div class="points-badge">
+            <span class="points-icon">⭐</span>
+            <span class="points-value">{{ user.points }}</span>
+          </div>
+        {% endif %}
+        <div class="avatar" style="background:{{ user.avatar_color }}">
+          {{ user.first_name|first|upper|default:user.username|first|upper }}
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="bottom-nav">
+    {% if user.is_parent %}
+      <a href="{% url 'parent_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'parent_dashboard' %}active{% endif %}">
+        <span class="nav-icon">🏠</span><span class="nav-label">Home</span>
+      </a>
+      <a href="{% url 'task_list' %}" class="nav-item {% if 'task' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="nav-icon">📋</span><span class="nav-label">Tasks</span>
+      </a>
+      <a href="{% url 'behavior_list' %}" class="nav-item {% if 'behavior' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="nav-icon">⭐</span><span class="nav-label">Behavior</span>
+      </a>
+      <a href="{% url 'reward_list' %}" class="nav-item {% if 'reward' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="nav-icon">🎁</span><span class="nav-label">Rewards</span>
+      </a>
+      <a href="{% url 'profile' %}" class="nav-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+        <span class="nav-icon">👤</span><span class="nav-label">Profile</span>
+      </a>
+    {% else %}
+      <a href="{% url 'kid_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'kid_dashboard' %}active{% endif %}">
+        <span class="nav-icon">🏠</span><span class="nav-label">Home</span>
+      </a>
+      <a href="{% url 'task_list' %}" class="nav-item {% if 'task' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="nav-icon">📋</span><span class="nav-label">Tasks</span>
+      </a>
+      <a href="{% url 'reward_list' %}" class="nav-item {% if 'reward' in request.resolver_match.url_name %}active{% endif %}">
+        <span class="nav-icon">🎁</span><span class="nav-label">Rewards</span>
+      </a>
+      <a href="{% url 'leaderboard' %}" class="nav-item {% if request.resolver_match.url_name == 'leaderboard' %}active{% endif %}">
+        <span class="nav-icon">🏆</span><span class="nav-label">Board</span>
+      </a>
+      <a href="{% url 'profile' %}" class="nav-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+        <span class="nav-icon">👤</span><span class="nav-label">Me</span>
+      </a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  <main class="main-content {% if not user.is_authenticated %}auth-page{% endif %}">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{% static 'core/app.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

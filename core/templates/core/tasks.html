@@ -1,0 +1,86 @@
+{% extends 'core/base.html' %}
+{% block title %}Tasks — TaskDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{% if user.is_parent %}All Tasks{% else %}My Tasks{% endif %}</h1>
+  {% if user.is_parent %}
+  <a href="{% url 'task_create' %}" class="btn btn-primary">+ New Task</a>
+  {% endif %}
+</div>
+
+{% if tasks %}
+  <!-- Filter tabs -->
+  <div class="filter-tabs">
+    <button class="filter-tab active" data-filter="all">All</button>
+    <button class="filter-tab" data-filter="pending">Pending</button>
+    <button class="filter-tab" data-filter="done">Completed</button>
+  </div>
+
+  <div class="task-list">
+    {% for task in tasks %}
+    <div class="task-card {% if task.completed %}task-done{% endif %}" data-status="{% if task.completed %}done{% else %}pending{% endif %}">
+      <div class="task-card-header">
+        <span class="task-cat-badge cat-{{ task.category }}">
+          {% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
+          {{ task.get_category_display }}
+        </span>
+        <span class="priority-badge priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
+      </div>
+      <div class="task-card-body">
+        <h3 class="task-title">{{ task.title }}</h3>
+        {% if task.description %}
+        <p class="task-desc">{{ task.description }}</p>
+        {% endif %}
+        <div class="task-meta-row">
+          {% if user.is_parent %}
+          <span class="meta-chip">👤 {{ task.assigned_to.first_name|default:task.assigned_to.username }}</span>
+          {% endif %}
+          <span class="meta-chip">📅 {{ task.due_date|date:"M j" }}</span>
+          <span class="meta-chip points-chip">⭐ {{ task.points_value }} pts</span>
+        </div>
+      </div>
+      <div class="task-card-footer">
+        {% if task.completed %}
+          <span class="badge badge-green">✓ Completed {{ task.completed_at|date:"M j" }}</span>
+          {% if task.fun_rating %}
+          <span class="badge badge-purple">{{ task.get_fun_rating_display }}</span>
+          {% endif %}
+        {% else %}
+          {% if user.is_kid %}
+          <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-sm">Mark Done ✓</a>
+          {% else %}
+          <span class="badge badge-grey">Pending</span>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <h2>No tasks yet</h2>
+    {% if user.is_parent %}
+    <p>Assign your first task to get things moving.</p>
+    <a href="{% url 'task_create' %}" class="btn btn-primary">Create a Task</a>
+    {% else %}
+    <p>No tasks assigned to you yet. Check back soon!</p>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.filter-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const filter = tab.dataset.filter;
+    document.querySelectorAll('.task-card').forEach(card => {
+      card.style.display = (filter === 'all' || card.dataset.status === filter) ? 'block' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}

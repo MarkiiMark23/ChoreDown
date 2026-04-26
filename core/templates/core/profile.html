@@ -1,0 +1,51 @@
+{% extends 'core/base.html' %}
+{% block title %}Profile — TaskDown{% endblock %}
+{% block content %}
+<div class="profile-header">
+  <div class="profile-avatar" style="background:{{ user.avatar_color }}">
+    {{ user.first_name|first|upper|default:user.username|first|upper }}
+  </div>
+  <div class="profile-info">
+    <h1 class="profile-name">{{ user.get_full_name|default:user.username }}</h1>
+    <span class="profile-role badge {% if user.is_parent %}badge-purple{% else %}badge-green{% endif %}">
+      {% if user.is_parent %}Parent{% else %}Kid{% endif %}
+    </span>
+    {% if user.is_kid %}
+    <div class="profile-points">⭐ {{ user.points }} total points</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if user.is_kid and transactions %}
+<section class="section">
+  <h2>Points History</h2>
+  {% for tx in transactions %}
+  <div class="tx-row">
+    <span class="tx-type-icon">
+      {% if tx.transaction_type == 'task' %}📋
+      {% elif tx.transaction_type == 'behavior_positive' %}⭐
+      {% elif tx.transaction_type == 'behavior_negative' %}⚠️
+      {% elif tx.transaction_type == 'redemption' %}🎁
+      {% elif tx.transaction_type == 'bonus' %}🎉
+      {% else %}⚡{% endif %}
+    </span>
+    <div class="tx-body">
+      <div class="tx-desc">{{ tx.description }}</div>
+      <div class="tx-date">{{ tx.created_at|date:"M j, g:i A" }}</div>
+    </div>
+    <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% else %}tx-negative{% endif %}">
+      {% if tx.amount > 0 %}+{% endif %}{{ tx.amount }}
+    </span>
+  </div>
+  {% endfor %}
+</section>
+{% elif user.is_kid %}
+<div class="empty-state empty-state--small">
+  <p>No points history yet. Complete a task to get started!</p>
+</div>
+{% endif %}
+
+<div class="section" style="margin-top:2rem">
+  <a href="{% url 'logout' %}" class="btn btn-outline btn-full" style="color:#F44336;border-color:#F44336">Sign Out</a>
+</div>
+{% endblock %}

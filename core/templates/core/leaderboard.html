@@ -1,0 +1,84 @@
+{% extends 'core/base.html' %}
+{% block title %}Leaderboard — TaskDown{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🏆 Leaderboard</h1>
+</div>
+
+{% if kids %}
+  <div class="lb-podium">
+    {% for kid in kids %}
+    {% if forloop.counter <= 3 %}
+    <div class="podium-place podium-{{ forloop.counter }} {% if kid == current_kid %}podium-me{% endif %}">
+      <div class="podium-avatar" style="background:{{ kid.avatar_color }}">
+        {{ kid.first_name|first|upper|default:kid.username|first|upper }}
+      </div>
+      <div class="podium-name">{{ kid.first_name|default:kid.username }}</div>
+      <div class="podium-pts">{{ kid.points }} pts</div>
+      <div class="podium-medal">
+        {% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% else %}🥉{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if kids|length > 3 %}
+  <div class="lb-list">
+    {% for kid in kids %}
+    {% if forloop.counter > 3 %}
+    <div class="leaderboard-row {% if kid == current_kid %}leaderboard-row--me{% endif %}">
+      <span class="lb-rank">{{ forloop.counter }}</span>
+      <div class="lb-avatar" style="background:{{ kid.avatar_color }}">
+        {{ kid.first_name|first|upper|default:kid.username|first|upper }}
+      </div>
+      <span class="lb-name">{{ kid.first_name|default:kid.username }}{% if kid == current_kid %} (you){% endif %}</span>
+      <span class="lb-points">⭐ {{ kid.points }}</span>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if kids|length > 1 %}
+  <div class="chart-card" style="margin-top:1.5rem">
+    <canvas id="lbChart" height="180"></canvas>
+  </div>
+  {% endif %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🏆</div>
+    <h2>No one here yet</h2>
+    <p>Complete tasks to appear on the leaderboard!</p>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if kids|length > 1 %}
+<script>
+new Chart(document.getElementById('lbChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: [{% for k in kids %}"{{ k.first_name|default:k.username }}",{% endfor %}],
+    datasets: [{
+      label: 'Points',
+      data: [{% for k in kids %}{{ k.points }},{% endfor %}],
+      backgroundColor: [{% for k in kids %}"{{ k.avatar_color }}88",{% endfor %}],
+      borderColor: [{% for k in kids %}"{{ k.avatar_color }}",{% endfor %}],
+      borderWidth: 2,
+      borderRadius: 10,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

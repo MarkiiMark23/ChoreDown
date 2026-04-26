@@ -1,0 +1,20 @@
+{% extends 'core/base.html' %}
+{% block title %}Redeem Reward — TaskDown{% endblock %}
+{% block content %}
+<div class="confirm-card">
+  <div class="confirm-icon">{{ reward.icon }}</div>
+  <h1 class="confirm-title">{{ reward.title }}</h1>
+  <p class="confirm-sub">{{ reward.description }}</p>
+  <div class="confirm-cost">
+    <span>This costs</span>
+    <strong>{{ reward.points_cost }} pts</strong>
+    <span>— you have {{ user.points }} pts</span>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary btn-lg btn-full">Send Request 🎉</button>
+  </form>
+  <a href="{% url 'reward_list' %}" class="btn btn-outline btn-full" style="margin-top:.5rem">Cancel</a>
+  <p class="confirm-note">Your parent will approve the request before the points are deducted.</p>
+</div>
+{% endblock %}

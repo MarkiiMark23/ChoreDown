@@ -1,0 +1,42 @@
+{% extends 'core/base.html' %}
+{% block title %}Rewards — TaskDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🎁 Rewards</h1>
+  <div class="points-badge-lg">⭐ {{ kid_points }} pts</div>
+</div>
+
+{% if no_parent %}
+  <div class="empty-state">
+    <div class="empty-icon">🔗</div>
+    <h2>Not linked to a parent</h2>
+    <p>Ask your parent to add you from their dashboard.</p>
+  </div>
+{% elif rewards %}
+  <div class="rewards-grid">
+    {% for reward in rewards %}
+    <div class="reward-card {% if reward.points_cost > kid_points %}reward-card--locked{% endif %}">
+      <div class="reward-card-icon">{{ reward.icon }}</div>
+      <div class="reward-card-title">{{ reward.title }}</div>
+      {% if reward.description %}
+      <div class="reward-card-desc">{{ reward.description }}</div>
+      {% endif %}
+      <div class="reward-card-cost">{{ reward.points_cost }} pts</div>
+      {% if reward.id in pending_ids %}
+        <span class="btn btn-sm btn-outline" style="cursor:default">⏳ Requested</span>
+      {% elif reward.points_cost <= kid_points %}
+        <a href="{% url 'reward_redeem' reward.pk %}" class="btn btn-primary btn-sm">Redeem!</a>
+      {% else %}
+        <div class="reward-need-more">Need {{ reward.points_cost|add:"-"|add:kid_points|stringformat:"d" }} more pts</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🎁</div>
+    <h2>No rewards yet</h2>
+    <p>Your parent hasn't added any rewards. Keep earning points!</p>
+  </div>
+{% endif %}
+{% endblock %}

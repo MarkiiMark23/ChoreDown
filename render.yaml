@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: taskdown
+    env: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn taskdown.wsgi:application
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,residentvalley.com,www.residentvalley.com"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taskdown-db
+          property: connectionString
+
+databases:
+  - name: taskdown-db
+    plan: free
