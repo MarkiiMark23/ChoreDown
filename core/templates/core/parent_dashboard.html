@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}Dashboard — TaskDown{% endblock %}
+{% block title %}Dashboard — {{ APP_NAME }}{% endblock %}
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {% endblock %}
@@ -12,7 +12,6 @@
   <a href="{% url 'task_create' %}" class="btn btn-primary">+ New Task</a>
 </div>
 
-<!-- Stats row -->
 <div class="stats-row">
   <div class="stat-card">
     <div class="stat-value">{{ kids|length }}</div>
@@ -28,7 +27,6 @@
   </div>
 </div>
 
-<!-- Kids leaderboard -->
 {% if kids %}
 <section class="section">
   <div class="section-header">
@@ -71,7 +69,6 @@
 </div>
 {% endif %}
 
-<!-- Pending redemption requests -->
 {% if pending_redemptions %}
 <section class="section">
   <div class="section-header">
@@ -96,7 +93,6 @@
 </section>
 {% endif %}
 
-<!-- Recent activity -->
 {% if recent_tasks %}
 <section class="section">
   <div class="section-header">

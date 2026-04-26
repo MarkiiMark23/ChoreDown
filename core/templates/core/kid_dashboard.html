@@ -1,8 +1,7 @@
 {% extends 'core/base.html' %}
-{% block title %}My Dashboard — TaskDown{% endblock %}
+{% block title %}My Dashboard — {{ APP_NAME }}{% endblock %}
 {% block content %}
 
-<!-- Points hero -->
 <div class="kid-hero">
   <div class="kid-hero-avatar" style="background:{{ user.avatar_color }}">
     {{ user.first_name|first|upper|default:user.username|first|upper }}
@@ -18,7 +17,6 @@
   {% endif %}
 </div>
 
-<!-- My tasks -->
 <section class="section">
   <div class="section-header">
     <h2>My Tasks</h2>
@@ -51,7 +49,6 @@
   {% endif %}
 </section>
 
-<!-- Leaderboard preview -->
 {% if siblings|length > 1 %}
 <section class="section">
   <div class="section-header">
@@ -71,7 +68,6 @@
 </section>
 {% endif %}
 
-<!-- Rewards preview -->
 {% if available_rewards %}
 <section class="section">
   <div class="section-header">
@@ -90,7 +86,6 @@
 </section>
 {% endif %}
 
-<!-- Recent history -->
 {% if recent_transactions %}
 <section class="section">
   <div class="section-header">
