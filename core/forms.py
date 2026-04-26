@@ -23,7 +23,7 @@ REWARD_ICONS = [
     ('🏖️', 'Trip'),
     ('🎉', 'Party'),
     ('📱', 'Screen Time'),
-    ('🛒', 'Shopping'),
+    ('🛍', 'Shopping'),
     ('🎠', 'Theme Park'),
     ('⭐', 'Star'),
 ]
@@ -33,6 +33,15 @@ class ParentRegistrationForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Password'}))
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Confirm Password'}))
     avatar_color = forms.ChoiceField(choices=AVATAR_COLORS, widget=forms.RadioSelect)
+    join_family_code = forms.CharField(
+        max_length=6, required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'e.g. ABC123',
+            'autocomplete': 'off',
+            'style': 'text-transform:uppercase;letter-spacing:.15em;font-weight:700;font-size:1.1rem',
+        }),
+        label='Partner Family Code (optional)',
+    )
 
     class Meta:
         model = CustomUser
@@ -97,7 +106,7 @@ class TaskCreateForm(forms.ModelForm):
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['assigned_to'].queryset = parent.children.filter(is_kid=True)
+        self.fields['assigned_to'].queryset = parent.get_family_kids()
         self.fields['assigned_to'].empty_label = "Select a kid"
 
 
@@ -112,7 +121,7 @@ class BehaviorLogForm(forms.ModelForm):
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['associated_with'].queryset = parent.children.filter(is_kid=True)
+        self.fields['associated_with'].queryset = parent.get_family_kids()
         self.fields['associated_with'].empty_label = "Select a kid"
 
 
@@ -126,6 +135,22 @@ class RewardCreateForm(forms.ModelForm):
             'title': forms.TextInput(attrs={'placeholder': 'e.g. Extra screen time'}),
             'description': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Optional details...'}),
             'points_cost': forms.NumberInput(attrs={'min': 1}),
+        }
+
+
+class ProfileEditForm(forms.ModelForm):
+    avatar_color = forms.ChoiceField(choices=AVATAR_COLORS, widget=forms.RadioSelect)
+
+    class Meta:
+        model = CustomUser
+        fields = ['first_name', 'last_name', 'email', 'bio', 'phone', 'birthdate', 'avatar_color']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'placeholder': 'First name'}),
+            'last_name': forms.TextInput(attrs={'placeholder': 'Last name'}),
+            'email': forms.EmailInput(attrs={'placeholder': 'Email address'}),
+            'bio': forms.TextInput(attrs={'placeholder': 'A sentence about me (optional)'}),
+            'phone': forms.TextInput(attrs={'placeholder': 'Phone number (optional)', 'type': 'tel'}),
+            'birthdate': forms.DateInput(attrs={'type': 'date'}),
         }
 
 
