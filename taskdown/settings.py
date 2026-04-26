@@ -7,7 +7,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-only-change-befor
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,choredown.com,www.choredown.com').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -100,9 +100,9 @@ LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 # ---- App identity — change these to rebrand ----
-APP_NAME = os.environ.get('APP_NAME', 'TaskDown')
-APP_TAGLINE = os.environ.get('APP_TAGLINE', 'Tasks for kids. Rewards they\'ll love.')
-APP_ICON = '⚡'  # emoji shown in header and landing page
+APP_NAME = os.environ.get('APP_NAME', 'ChoreDown')
+APP_TAGLINE = os.environ.get('APP_TAGLINE', 'Chores done. Rewards earned.')
+APP_ICON = '🏠'  # emoji shown in header and landing page
 # ------------------------------------------------
 
 REST_FRAMEWORK = {

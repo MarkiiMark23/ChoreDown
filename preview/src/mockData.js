@@ -1,5 +1,5 @@
-export const APP_NAME = 'TaskDown';
-export const APP_ICON = '⚡';
+export const APP_NAME = 'ChoreDown';
+export const APP_ICON = '🏠';
 
 export const currentParent = {
   id: 1, username: 'markiimark', first_name: 'Mark', is_parent: true, avatar_color: '#6C63FF',
