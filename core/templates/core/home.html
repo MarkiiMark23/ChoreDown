@@ -4,15 +4,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaskDown — Family Task & Rewards</title>
+  <title>{{ APP_NAME }} — Family Task & Rewards</title>
   <link rel="stylesheet" href="{% static 'core/styles.css' %}">
 </head>
 <body>
   <div class="landing">
     <div class="landing-hero">
-      <div class="landing-logo">⚡</div>
-      <h1 class="landing-title">TaskDown</h1>
-      <p class="landing-subtitle">Tasks for kids. Rewards they'll love. Peace of mind for parents.</p>
+      <div class="landing-logo">{{ APP_ICON }}</div>
+      <h1 class="landing-title">{{ APP_NAME }}</h1>
+      <p class="landing-subtitle">{{ APP_TAGLINE }}</p>
       <div class="landing-actions">
         <a href="{% url 'register' %}" class="btn btn-primary btn-lg">Get Started Free</a>
         <a href="{% url 'login' %}" class="btn btn-outline btn-lg">Sign In</a>

@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#6C63FF">
-  <title>{% block title %}TaskDown{% endblock %}</title>
+  <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'core/styles.css' %}">
   <link rel="manifest" href="{% static 'core/manifest.json' %}">
   {% block extra_head %}{% endblock %}
@@ -16,8 +16,8 @@
   <header class="app-header">
     <div class="header-inner">
       <a href="{% url 'dashboard' %}" class="logo">
-        <span class="logo-icon">⚡</span>
-        <span class="logo-text">TaskDown</span>
+        <span class="logo-icon">{{ APP_ICON }}</span>
+        <span class="logo-text">{{ APP_NAME }}</span>
       </a>
       <div class="header-right">
         {% if user.is_kid %}

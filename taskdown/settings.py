@@ -45,6 +45,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.app_settings',
             ],
         },
     },
@@ -97,6 +98,12 @@ AUTH_USER_MODEL = 'core.CustomUser'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# ---- App identity — change these to rebrand ----
+APP_NAME = os.environ.get('APP_NAME', 'TaskDown')
+APP_TAGLINE = os.environ.get('APP_TAGLINE', 'Tasks for kids. Rewards they\'ll love.')
+APP_ICON = '⚡'  # emoji shown in header and landing page
+# ------------------------------------------------
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
