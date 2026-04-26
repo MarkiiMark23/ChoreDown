@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}Tasks — TaskDown{% endblock %}
+{% block title %}Tasks — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1 class="page-title">{% if user.is_parent %}All Tasks{% else %}My Tasks{% endif %}</h1>
@@ -9,7 +9,6 @@
 </div>
 
 {% if tasks %}
-  <!-- Filter tabs -->
   <div class="filter-tabs">
     <button class="filter-tab active" data-filter="all">All</button>
     <button class="filter-tab" data-filter="pending">Pending</button>
