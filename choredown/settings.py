@@ -32,7 +32,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'taskdown.urls'
+ROOT_URLCONF = 'choredown.urls'
 
 TEMPLATES = [
     {
@@ -51,12 +51,12 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'taskdown.wsgi.application'
+WSGI_APPLICATION = 'choredown.wsgi.application'
 
 # Database — reads DATABASE_URL env var on Render, falls back to local Postgres
 _db_url = os.environ.get(
     'DATABASE_URL',
-    'postgresql://taskdown_user:your_password@localhost:5432/taskdown_db'
+    'postgresql://choredown_user:your_password@localhost:5432/choredown_db'
 )
 
 try:
@@ -67,8 +67,8 @@ except ImportError:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'taskdown_db',
-            'USER': 'taskdown_user',
+            'NAME': 'choredown_db',
+            'USER': 'choredown_user',
             'PASSWORD': os.environ.get('DB_PASSWORD', 'your_password'),
             'HOST': 'localhost',
             'PORT': '5432',
