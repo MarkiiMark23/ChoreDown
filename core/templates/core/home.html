@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ APP_NAME }} — Family Task & Rewards</title>
+  <title>{{ APP_NAME }} — ADHD-Friendly Chores &amp; Rewards</title>
   <link rel="stylesheet" href="{% static 'core/styles.css' %}">
 </head>
 <body>
@@ -18,30 +18,54 @@
         <a href="{% url 'login' %}" class="btn btn-outline btn-lg">Sign In</a>
       </div>
     </div>
+
+    <div class="landing-adhd-banner">
+      <span class="adhd-tag">🧠 ADHD-Friendly</span>
+      <p>Traditional chore charts don’t work for ADHD kids — they forget, parents nag, everyone’s frustrated. ChoreDown uses <strong>instant points</strong>, <strong>visual rewards</strong>, and <strong>one-tap task completion</strong> to make structure feel like a game, not a punishment.</p>
+    </div>
+
     <div class="landing-features">
       <div class="feature-card">
-        <div class="feature-icon">📋</div>
-        <h3>Assign Tasks</h3>
-        <p>Give kids clear tasks with due dates, priorities, and point values.</p>
+        <div class="feature-icon">⚡</div>
+        <h3>Instant Feedback</h3>
+        <p>Kids earn points the moment they complete a task. No waiting, no nagging — ADHD brains need immediate rewards.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon">⭐</div>
-        <h3>Earn Points</h3>
-        <p>Kids earn points for completing tasks and good behaviour.</p>
+        <div class="feature-icon">🎯</div>
+        <h3>One Task at a Time</h3>
+        <p>Clear, focused task cards. No overwhelming lists — just the next thing to do, with points to earn.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🎁</div>
-        <h3>Claim Rewards</h3>
-        <p>Spend points on rewards parents define — screen time, treats, outings.</p>
+        <h3>Real Rewards</h3>
+        <p>Parents set rewards kids actually want — screen time, pizza, a trip to the park. Motivation that sticks.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🏆</div>
-        <h3>Leaderboard</h3>
-        <p>Friendly competition keeps everyone motivated and engaged.</p>
+        <h3>Friendly Competition</h3>
+        <p>Siblings compete on a live leaderboard. The competitive spark that keeps ADHD kids engaged.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⭐</div>
+        <h3>Behavior Tracking</h3>
+        <p>Log positive moments instantly. Reinforce the good behaviour you want to see more of.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">👨‍👩‍👧</div>
+        <h3>Two-Parent Support</h3>
+        <p>Both parents share the same family. One account, one system, no confusion.</p>
       </div>
     </div>
+
+    <div class="landing-about">
+      <h2>Why ChoreDown?</h2>
+      <p>ADHD affects roughly 1 in 10 children. These kids aren’t lazy — their brains are wired differently. They struggle with working memory (forgetting what they’re supposed to do), time blindness (not sensing how long things take), and low dopamine (needing bigger or faster rewards to feel motivated).</p>
+      <p>ChoreDown was designed around these realities. Every feature — the big colourful points badge, the one-tap task completion, the instant reward catalogue, the leaderboard — exists because <strong>structure works best when it feels like a game</strong>.</p>
+      <p>Whether your child has a formal ADHD diagnosis or just needs more visual, motivating routines, ChoreDown meets them where they are.</p>
+    </div>
+
     <footer class="landing-footer">
-      <p>Made with ❤️ for families</p>
+      <p>Made with ❤️ for neurodiverse families</p>
     </footer>
   </div>
 </body>

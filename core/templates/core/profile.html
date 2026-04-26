@@ -1,24 +1,98 @@
 {% extends 'core/base.html' %}
-{% block title %}Profile — TaskDown{% endblock %}
+{% block title %}Profile — {{ APP_NAME }}{% endblock %}
 {% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">My Profile</h1>
+  <a href="{% url 'profile_edit' %}" class="btn btn-sm btn-outline">Edit</a>
+</div>
+
+<!-- Identity card -->
 <div class="profile-header">
   <div class="profile-avatar" style="background:{{ user.avatar_color }}">
     {{ user.first_name|first|upper|default:user.username|first|upper }}
   </div>
   <div class="profile-info">
-    <h1 class="profile-name">{{ user.get_full_name|default:user.username }}</h1>
-    <span class="profile-role badge {% if user.is_parent %}badge-purple{% else %}badge-green{% endif %}">
+    <h2 class="profile-name">{{ user.get_full_name|default:user.username }}</h2>
+    <div style="color:var(--text-muted);font-size:.85rem;">@{{ user.username }}</div>
+    <span class="profile-role badge {% if user.is_parent %}badge-purple{% else %}badge-green{% endif %}" style="margin-top:.3rem">
       {% if user.is_parent %}Parent{% else %}Kid{% endif %}
     </span>
-    {% if user.is_kid %}
-    <div class="profile-points">⭐ {{ user.points }} total points</div>
-    {% endif %}
   </div>
 </div>
 
+<!-- Bio / quick info -->
+<div class="profile-details-card">
+  {% if user.bio %}
+  <div class="profile-detail-row">
+    <span class="profile-detail-label">About</span>
+    <span>{{ user.bio }}</span>
+  </div>
+  {% endif %}
+  {% if user.email %}
+  <div class="profile-detail-row">
+    <span class="profile-detail-label">Email</span>
+    <span>{{ user.email }}</span>
+  </div>
+  {% endif %}
+  {% if user.phone %}
+  <div class="profile-detail-row">
+    <span class="profile-detail-label">Phone</span>
+    <span>{{ user.phone }}</span>
+  </div>
+  {% endif %}
+  {% if user.birthdate %}
+  <div class="profile-detail-row">
+    <span class="profile-detail-label">Birthday</span>
+    <span>{{ user.birthdate|date:"F j, Y" }}</span>
+  </div>
+  {% endif %}
+  {% if not user.bio and not user.email and not user.phone and not user.birthdate %}
+  <p class="profile-empty-hint">No details yet. <a href="{% url 'profile_edit' %}">Add some info →</a></p>
+  {% endif %}
+</div>
+
+<!-- Stats -->
+<div class="stats-row" style="margin-top:1.25rem">
+  {% if user.is_kid %}
+  <div class="stat-card">
+    <div class="stat-value">{{ user.points }}</div>
+    <div class="stat-label">Points Now</div>
+  </div>
+  <div class="stat-card stat-card--green">
+    <div class="stat-value">{{ stats.tasks_done }}</div>
+    <div class="stat-label">Done</div>
+  </div>
+  <div class="stat-card stat-card--orange">
+    <div class="stat-value">{{ stats.rewards_redeemed }}</div>
+    <div class="stat-label">Redeemed</div>
+  </div>
+  {% else %}
+  <div class="stat-card">
+    <div class="stat-value">{{ stats.kids_count }}</div>
+    <div class="stat-label">Kids</div>
+  </div>
+  <div class="stat-card stat-card--green">
+    <div class="stat-value">{{ stats.tasks_done }}</div>
+    <div class="stat-label">Tasks Done</div>
+  </div>
+  <div class="stat-card stat-card--orange">
+    <div class="stat-value">{{ stats.rewards_created }}</div>
+    <div class="stat-label">Rewards</div>
+  </div>
+  {% endif %}
+</div>
+
+{% if user.is_kid and stats.total_earned %}
+<div class="profile-lifetime-pts">
+  ⭐ {{ stats.total_earned }} total points earned all time
+</div>
+{% endif %}
+
+<!-- Points history (kid) -->
 {% if user.is_kid and transactions %}
-<section class="section">
-  <h2>Points History</h2>
+<section class="section" style="margin-top:1.25rem">
+  <div class="section-header"><h2>Points History</h2></div>
   {% for tx in transactions %}
   <div class="tx-row">
     <span class="tx-type-icon">
@@ -45,7 +119,26 @@
 </div>
 {% endif %}
 
-<div class="section" style="margin-top:2rem">
+<!-- Family code (parent) -->
+{% if user.is_parent %}
+<section class="section" style="margin-top:1rem">
+  {% if not user.parent_account %}
+  <div class="family-code-card">
+    <h3>👨‍👩‍👧 Your Family Code</h3>
+    <div class="family-code-display">{{ user.family_code }}</div>
+    <p class="field-hint">Share with your partner when they register — they'll enter this to join your family.</p>
+  </div>
+  {% else %}
+  <div class="family-code-card">
+    <h3>👨‍👩‍👧 Your Family</h3>
+    <p>Co-managing with <strong>{{ user.parent_account.get_full_name|default:user.parent_account.username }}</strong></p>
+    <p class="field-hint">Family code: <strong>{{ user.parent_account.family_code }}</strong></p>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+<div class="section" style="margin-top:.5rem">
   <a href="{% url 'logout' %}" class="btn btn-outline btn-full" style="color:#F44336;border-color:#F44336">Sign Out</a>
 </div>
 {% endblock %}

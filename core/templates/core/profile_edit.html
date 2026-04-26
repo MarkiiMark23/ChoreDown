@@ -1,0 +1,63 @@
+{% extends 'core/base.html' %}
+{% block title %}Edit Profile — {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{% url 'profile' %}" class="back-btn">← Back</a>
+  <h1 class="page-title">Edit Profile</h1>
+</div>
+
+<div class="form-card">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-row">
+      <div class="form-group">
+        <label>First Name</label>
+        {{ form.first_name }}
+      </div>
+      <div class="form-group">
+        <label>Last Name</label>
+        {{ form.last_name }}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      {{ form.email }}
+    </div>
+    <div class="form-group">
+      <label>About Me <span class="optional">(optional)</span></label>
+      {{ form.bio }}
+      <span class="field-hint">One sentence — shown on your profile.</span>
+    </div>
+    {% if user.is_parent %}
+    <div class="form-group">
+      <label>Phone <span class="optional">(optional)</span></label>
+      {{ form.phone }}
+      <span class="field-hint">Not displayed publicly. May be used for future notifications.</span>
+    </div>
+    {% endif %}
+    <div class="form-group">
+      <label>Birthday <span class="optional">(optional)</span></label>
+      {{ form.birthdate }}
+    </div>
+    <div class="form-group">
+      <label>Avatar Colour</label>
+      <div class="color-picker">
+        {% for value, label in form.avatar_color.field.choices %}
+          <label class="color-option">
+            <input type="radio" name="avatar_color" value="{{ value }}" {% if form.avatar_color.value == value %}checked{% endif %}>
+            <span class="color-swatch" style="background:{{ value }}" title="{{ label }}"></span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% if form.errors %}
+    <div class="alert alert-error">
+      {% for field, errors in form.errors.items %}
+        {% for error in errors %}{{ error }}<br>{% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary btn-full">Save Changes</button>
+  </form>
+</div>
+{% endblock %}
