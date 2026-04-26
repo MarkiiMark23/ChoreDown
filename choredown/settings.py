@@ -101,7 +101,7 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 # ---- App identity — change these to rebrand ----
 APP_NAME = os.environ.get('APP_NAME', 'ChoreDown')
-APP_TAGLINE = os.environ.get('APP_TAGLINE', 'Chores done. Rewards earned.')
+APP_TAGLINE = os.environ.get('APP_TAGLINE', 'Built for ADHD brains. Visual. Fun. It actually works.')
 APP_ICON = '🏠'  # emoji shown in header and landing page
 # ------------------------------------------------
 

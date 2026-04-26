@@ -29,6 +29,7 @@ urlpatterns = [
 
     path('leaderboard/', views.leaderboard_view, name='leaderboard'),
     path('profile/', views.profile_view, name='profile'),
+    path('profile/edit/', views.profile_edit_view, name='profile_edit'),
 
     # --- API views ---
     path('api/register/', views.UserRegistrationView.as_view(), name='api_register'),

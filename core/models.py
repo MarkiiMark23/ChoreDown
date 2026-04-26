@@ -1,8 +1,16 @@
+import secrets
+import string as _string
+
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+
+
+def _generate_family_code():
+    chars = _string.ascii_uppercase + _string.digits
+    return ''.join(secrets.choice(chars) for _ in range(6))
 
 
 class CustomUser(AbstractUser):
@@ -14,16 +22,33 @@ class CustomUser(AbstractUser):
         on_delete=models.SET_NULL, related_name='children'
     )
     avatar_color = models.CharField(max_length=7, default='#6C63FF')
+    family_code = models.CharField(max_length=6, unique=True, blank=True)
+    bio = models.CharField(max_length=200, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    birthdate = models.DateField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.family_code:
+            code = _generate_family_code()
+            while CustomUser.objects.filter(family_code=code).exists():
+                code = _generate_family_code()
+            self.family_code = code
+        super().save(*args, **kwargs)
 
     def clean(self):
         if self.is_parent and self.is_kid:
             raise ValidationError("A user cannot be both a parent and a kid.")
 
-    def is_parent_user(self):
-        return self.is_parent
+    def get_family_head(self):
+        """Return the primary parent of this user's family."""
+        if self.parent_account_id:
+            return self.parent_account
+        return self
 
-    def is_kid_user(self):
-        return self.is_kid
+    def get_family_kids(self):
+        """Return all kids belonging to this user's family."""
+        head = self.get_family_head()
+        return CustomUser.objects.filter(parent_account=head, is_kid=True)
 
     def __str__(self):
         role = 'Parent' if self.is_parent else 'Kid'
