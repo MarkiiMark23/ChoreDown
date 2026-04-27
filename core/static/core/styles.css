@@ -885,16 +885,21 @@ a { color: var(--primary); text-decoration: none; }
 =========================== */
 .landing {
   min-height: 100vh;
-  background: linear-gradient(160deg, #6C63FF 0%, #5a52d5 40%, #F5F6FA 40%);
+  background: var(--bg);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 .landing-hero {
   text-align: center;
-  padding: 3rem 1.5rem 2rem;
+  padding: 3.5rem 1.5rem 3rem;
   color: white;
+  width: 100%;
+  background: linear-gradient(145deg, #6C63FF 0%, #5a52d5 100%);
+}
+.landing-hero-inner {
   max-width: 480px;
+  margin: 0 auto;
 }
 .landing-logo { font-size: 4rem; margin-bottom: .5rem; }
 .landing-title { font-size: 2.5rem; font-weight: 800; margin-bottom: .5rem; }
@@ -903,11 +908,35 @@ a { color: var(--primary); text-decoration: none; }
 .landing-actions .btn-outline { border-color: rgba(255,255,255,.6); color: white; }
 .landing-actions .btn-outline:hover { background: rgba(255,255,255,.15); }
 .landing-actions .btn-primary { background: white; color: var(--primary); }
+.landing-adhd-banner {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 1.25rem 0;
+  box-shadow: var(--shadow);
+  max-width: 640px;
+  width: calc(100% - 2.5rem);
+  border-left: 4px solid var(--primary);
+}
+.adhd-tag {
+  display: inline-block;
+  background: var(--primary);
+  color: white;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .2rem .6rem;
+  border-radius: 20px;
+  margin-bottom: .6rem;
+}
+.landing-adhd-banner p { font-size: .88rem; color: var(--text-muted); line-height: 1.6; }
+.landing-adhd-banner p strong { color: var(--text); }
 .landing-features {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: .75rem;
-  padding: 2rem 1.25rem;
+  padding: 1.25rem 1.25rem 0;
   max-width: 640px;
   width: 100%;
 }
@@ -921,7 +950,19 @@ a { color: var(--primary); text-decoration: none; }
 .feature-icon { font-size: 2rem; margin-bottom: .5rem; }
 .feature-card h3 { font-size: .95rem; font-weight: 700; margin-bottom: .3rem; }
 .feature-card p { font-size: .8rem; color: var(--text-muted); }
-.landing-footer { padding: 1rem; color: var(--text-muted); font-size: .85rem; }
+.landing-about {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin: 1.25rem 1.25rem 0;
+  box-shadow: var(--shadow);
+  max-width: 640px;
+  width: calc(100% - 2.5rem);
+}
+.landing-about h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: .85rem; }
+.landing-about p { font-size: .88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: .65rem; }
+.landing-about p:last-child { margin-bottom: 0; }
+.landing-footer { padding: 1.5rem 1rem; color: var(--text-muted); font-size: .85rem; text-align: center; }
 
 /* ===========================
    Points badge (large)
@@ -942,8 +983,10 @@ a { color: var(--primary); text-decoration: none; }
   background: var(--card);
   border-radius: var(--radius);
   padding: 1.5rem;
-  margin: 0 1rem 2rem;
+  margin: 1.25rem 1.25rem 2rem;
   box-shadow: var(--shadow);
+  max-width: 640px;
+  width: calc(100% - 2.5rem);
 }
 .landing-how h2 { font-size: 1.1rem; margin-bottom: 1rem; }
 .how-steps { display: flex; flex-direction: column; gap: .75rem; }
@@ -1156,4 +1199,6 @@ a { color: var(--primary); text-decoration: none; }
   .rewards-grid { grid-template-columns: repeat(3, 1fr); }
   .landing-features { grid-template-columns: repeat(4, 1fr); }
   .preset-grid { grid-template-columns: repeat(5, 1fr); }
+  .landing-hero { padding: 4.5rem 2rem 3.5rem; }
+  .landing-title { font-size: 3rem; }
 }
