@@ -936,6 +936,218 @@ a { color: var(--primary); text-decoration: none; }
 }
 
 /* ===========================
+   Landing — how-it-works
+=========================== */
+.landing-how {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin: 0 1rem 2rem;
+  box-shadow: var(--shadow);
+}
+.landing-how h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+.how-steps { display: flex; flex-direction: column; gap: .75rem; }
+.how-step {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: .9rem;
+}
+.how-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  font-size: .85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.how-step-text { color: var(--text-muted); }
+.how-step-text strong { color: var(--text); }
+
+/* ===========================
+   Parent setup card (empty state)
+=========================== */
+.setup-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.5rem;
+}
+.setup-card h2 { font-size: 1.1rem; margin-bottom: .35rem; }
+.setup-intro { color: var(--text-muted); font-size: .88rem; margin-bottom: 1rem; }
+.setup-steps { display: flex; flex-direction: column; gap: .5rem; }
+.setup-step {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: .85rem 1rem;
+  text-decoration: none;
+  color: var(--text);
+  transition: background .15s;
+}
+.setup-step:hover { background: #6C63FF11; }
+.setup-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  font-size: .85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.setup-step-body { flex: 1; }
+.setup-step-body strong { display: block; font-size: .9rem; }
+.setup-step-body span { font-size: .8rem; color: var(--text-muted); }
+.setup-step-arrow { color: var(--text-muted); font-size: 1rem; }
+
+/* ===========================
+   Preset grid (task create)
+=========================== */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .5rem;
+  margin-bottom: .5rem;
+}
+.preset-btn {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .6rem .75rem;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+  color: var(--text);
+}
+.preset-btn:hover { border-color: var(--primary); background: #6C63FF0a; }
+.preset-btn--active { border-color: var(--primary); background: #6C63FF15; color: var(--primary); }
+.form-divider {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: .8rem;
+  margin: 1rem 0;
+  position: relative;
+}
+.form-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+  z-index: 0;
+}
+.form-divider::after {
+  content: attr(data-text);
+}
+.form-divider {
+  background: none;
+  padding: 0 .75rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.form-divider::before,
+.form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ===========================
+   Feedback chips (task review)
+=========================== */
+.feedback-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: .5rem;
+}
+.feedback-chip {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: .3rem .75rem;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all .15s;
+}
+.feedback-chip:hover { border-color: var(--primary); color: var(--primary); background: #6C63FF08; }
+
+/* ===========================
+   Review summary
+=========================== */
+.review-summary {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: .85rem 1rem;
+  margin: .75rem 0 1rem;
+  font-size: .88rem;
+}
+.review-summary p { margin-bottom: .35rem; }
+.review-summary p:last-child { margin-bottom: 0; }
+.review-flag { color: var(--text-muted); }
+.review-note {
+  font-style: italic;
+  color: var(--primary);
+  border-left: 3px solid var(--primary);
+  padding-left: .5rem;
+  margin-top: .35rem;
+}
+
+/* ===========================
+   Reward goal banner
+=========================== */
+.reward-goal-banner {
+  font-size: .92rem;
+  margin-bottom: 1rem;
+}
+
+/* ===========================
+   Kid dashboard
+=========================== */
+.reset-note { color: var(--orange); }
+.task-extra.hidden { display: none; }
+
+/* ===========================
+   Profile section divider
+=========================== */
+.profile-section-divider {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  margin: 1rem 0 .75rem;
+}
+
+/* ===========================
+   Stat card link
+=========================== */
+.stat-link { text-decoration: none; color: inherit; }
+.stat-link:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); transition: all .15s; }
+
+/* ===========================
    Responsive (tablet+)
 =========================== */
 @media (min-width: 640px) {
@@ -943,4 +1155,5 @@ a { color: var(--primary); text-decoration: none; }
   .stats-row { gap: 1rem; }
   .rewards-grid { grid-template-columns: repeat(3, 1fr); }
   .landing-features { grid-template-columns: repeat(4, 1fr); }
+  .preset-grid { grid-template-columns: repeat(5, 1fr); }
 }

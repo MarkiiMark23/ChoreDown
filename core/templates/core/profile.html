@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}Profile — ChoreDown{% endblock %}
+{% block title %}Profile — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="profile-header">
   <a class="profile-avatar" href="{% url 'profile' %}" style="background:{{ user.avatar_color }}" title="Profile">
@@ -11,28 +11,41 @@
       {% if user.is_parent %}Parent{% else %}Kid{% endif %}
     </span>
     {% if user.is_kid %}
-    <a href="{% url 'point_history' %}" class="profile-points">⭐ {{ user.points }} total points</a>
+    <a href="{% url 'point_history' %}" class="profile-points">⭐ {{ user.points }} points</a>
     {% endif %}
   </div>
 </div>
 
 <section class="section">
   <div class="section-header">
-    <h2>Optional Support Profile</h2>
+    <h2>{% if user.is_kid %}Support Profile{% else %}Your Settings{% endif %}</h2>
   </div>
+  {% if user.is_kid %}
+  <p class="form-intro">These optional details help ChoreDown feel more personal. Fill in as much or as little as you like — it's never shared outside your family.</p>
+  {% else %}
+  <p class="form-intro">Update your name, notification preference, and household defaults here.</p>
+  {% endif %}
   <div class="form-card">
     <form method="post">
       {% csrf_token %}
       <div class="form-row">
         <div class="form-group"><label>First Name</label>{{ form.first_name }}</div>
-        <div class="form-group"><label>Preferred Name</label>{{ form.preferred_name }}</div>
+        <div class="form-group">
+          <label>Preferred Name <span class="optional">(optional)</span></label>
+          {{ form.preferred_name }}
+          <span class="field-hint">What they like to be called — shown in the app instead of their first name.</span>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Email</label>{{ form.email }}</div>
-        <div class="form-group"><label>Notifications</label>{{ form.notification_preference }}</div>
+        <div class="form-group">
+          <label>Notifications</label>
+          {{ form.notification_preference }}
+          <span class="field-hint">In-app notifications always work. Email requires email to be set up on your account.</span>
+        </div>
       </div>
       <div class="form-group">
-        <label>Avatar Color</label>
+        <label>Avatar Colour</label>
         <div class="color-picker">
           {% for value, label in form.avatar_color.field.choices %}
           <label class="color-option">
@@ -44,23 +57,70 @@
       </div>
 
       {% if user.is_kid %}
+      <div class="profile-section-divider">Support preferences <span class="optional">(all optional)</span></div>
       <div class="form-row">
-        <div class="form-group"><label>Age Range</label>{{ form.age_range }}</div>
-        <div class="form-group"><label>Motivation Style</label>{{ form.motivation_style }}</div>
+        <div class="form-group">
+          <label>Age Range</label>
+          {{ form.age_range }}
+        </div>
+        <div class="form-group">
+          <label>What motivates me</label>
+          {{ form.motivation_style }}
+        </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Best Task Time</label>{{ form.best_task_time }}</div>
-        <div class="form-group"><label>Reminder Preference</label>{{ form.reminder_preference }}</div>
+        <div class="form-group">
+          <label>Best time for tasks</label>
+          {{ form.best_task_time }}
+          <span class="field-hint">e.g. "after school", "before dinner"</span>
+        </div>
+        <div class="form-group">
+          <label>Reminder style</label>
+          {{ form.reminder_preference }}
+        </div>
       </div>
-      <div class="form-group"><label>Favorite Rewards</label>{{ form.favorite_rewards }}</div>
-      <div class="form-group"><label>Overwhelm Triggers</label>{{ form.overwhelm_triggers }}</div>
-      <div class="form-group"><label>Focus Supports</label>{{ form.focus_supports }}</div>
-      <div class="form-group"><label>Sensory Notes</label>{{ form.sensory_notes }}</div>
-      <div class="form-group"><label>Goals</label>{{ form.goals }}</div>
+      <div class="form-group">
+        <label>Rewards I love</label>
+        {{ form.favorite_rewards }}
+        <span class="field-hint">e.g. "extra screen time, trips to the park, staying up late"</span>
+      </div>
+      <div class="form-group">
+        <label>Things that can make me feel overwhelmed</label>
+        {{ form.overwhelm_triggers }}
+        <span class="field-hint">e.g. "too many tasks at once, loud noise, unexpected changes"</span>
+      </div>
+      <div class="form-group">
+        <label>Things that help me focus</label>
+        {{ form.focus_supports }}
+        <span class="field-hint">e.g. "music, quiet room, having a snack first, timers"</span>
+      </div>
+      <div class="form-group">
+        <label>Sensory things to know</label>
+        {{ form.sensory_notes }}
+        <span class="field-hint">e.g. "sensitive to loud noise, needs movement breaks, prefers low lighting"</span>
+      </div>
+      <div class="form-group">
+        <label>What I'm working toward</label>
+        {{ form.goals }}
+        <span class="field-hint">e.g. "save for a bike, build a better morning routine, get homework done on time"</span>
+      </div>
       {% else %}
-      <div class="form-group"><label>Household Timezone</label>{{ form.household_timezone }}</div>
-      <div class="form-group"><label>Feedback Preferences</label>{{ form.feedback_preferences }}</div>
-      <div class="form-group"><label>Default Approval Note</label>{{ form.default_approval_note }}</div>
+      <div class="profile-section-divider">Parent preferences <span class="optional">(all optional)</span></div>
+      <div class="form-group">
+        <label>Household timezone</label>
+        {{ form.household_timezone }}
+        <span class="field-hint">e.g. "America/New_York" — used to display due times correctly</span>
+      </div>
+      <div class="form-group">
+        <label>How I like to give feedback</label>
+        {{ form.feedback_preferences }}
+        <span class="field-hint">e.g. "encouraging, specific praise, avoid pointing out what went wrong"</span>
+      </div>
+      <div class="form-group">
+        <label>Default approval note</label>
+        {{ form.default_approval_note }}
+        <span class="field-hint">Pre-fill this on every task review so you don't have to type it each time.</span>
+      </div>
       {% endif %}
 
       {% if form.errors %}
@@ -70,7 +130,7 @@
         {% endfor %}
       </div>
       {% endif %}
-      <button type="submit" class="btn btn-primary btn-full">Save Profile</button>
+      <button type="submit" class="btn btn-primary btn-full">Save Changes</button>
     </form>
   </div>
 </section>

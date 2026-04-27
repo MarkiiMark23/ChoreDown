@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}Add a Kid — TaskDown{% endblock %}
+{% block title %}Add a Kid — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <a href="{% url 'parent_dashboard' %}" class="back-btn">← Back</a>
@@ -7,7 +7,7 @@
 </div>
 
 <div class="form-card">
-  <p class="form-intro">Create a login for your child. They'll use this to sign in and see their tasks.</p>
+  <p class="form-intro">Create a login for your child. They'll sign in on their own device and see only their tasks and rewards — nothing else.</p>
   <form method="post">
     {% csrf_token %}
     <div class="form-group">
@@ -17,10 +17,12 @@
     <div class="form-group">
       <label>Username</label>
       {{ form.username }}
+      <span class="field-hint">They'll type this to log in. Keep it simple — first name or a nickname works great.</span>
     </div>
     <div class="form-group">
       <label>Password</label>
       {{ form.password }}
+      <span class="field-hint">Something easy for them to remember. You can change it any time from the admin panel.</span>
     </div>
     <div class="form-group">
       <label>Pick their colour</label>

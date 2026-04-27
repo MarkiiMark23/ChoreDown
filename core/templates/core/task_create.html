@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}New Task — TaskDown{% endblock %}
+{% block title %}New Task — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <a href="{% url 'task_list' %}" class="back-btn">← Back</a>
@@ -7,13 +7,30 @@
 </div>
 
 <div class="form-card">
+  <p class="form-intro">Start with a common routine below, or scroll down to build your own.</p>
+
+  <div class="form-group">
+    <label>Quick Pick a Routine</label>
+    <div class="preset-grid">
+      <button type="button" class="preset-btn" data-preset="clean_room">🧹 Clean Room</button>
+      <button type="button" class="preset-btn" data-preset="brush_teeth">🦷 Brush Teeth</button>
+      <button type="button" class="preset-btn" data-preset="homework">📚 Homework</button>
+      <button type="button" class="preset-btn" data-preset="read">📖 Read 20 min</button>
+      <button type="button" class="preset-btn" data-preset="dishes">🍽️ Dishes</button>
+      <button type="button" class="preset-btn" data-preset="laundry">👕 Laundry</button>
+      <button type="button" class="preset-btn" data-preset="trash">🗑️ Take Out Trash</button>
+      <button type="button" class="preset-btn" data-preset="pet_care">🐾 Pet Care</button>
+      <button type="button" class="preset-btn" data-preset="backpack">🎒 Reset Backpack</button>
+      <button type="button" class="preset-btn" data-preset="bedtime">🌙 Bedtime Routine</button>
+    </div>
+    <span class="field-hint">Tap a preset to fill in the form — you can adjust anything you want.</span>
+  </div>
+
+  <div class="form-divider">or fill in manually</div>
+
   <form method="post">
     {% csrf_token %}
-    <div class="form-group">
-      <label>Quick Pick</label>
-      {{ form.preset }}
-      <span class="field-hint">Choose a common task, then edit anything you want.</span>
-    </div>
+    <input type="hidden" name="preset" id="id_preset" value="">
     <div class="form-group">
       <label>Task Title</label>
       {{ form.title }}
@@ -38,12 +55,12 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Points Value</label>
+        <label>Points</label>
         {{ form.points_value }}
-        <span class="field-hint">How many points for completing this?</span>
+        <span class="field-hint">Presets suggest a value — adjust freely.</span>
       </div>
       <div class="form-group">
-        <label>Due Date</label>
+        <label>Due Date &amp; Time</label>
         {{ form.due_date }}
       </div>
     </div>
@@ -64,22 +81,31 @@
 const taskPresets = {
   clean_room: ['Clean your room', 'Pick up clothes, clear trash, and reset the bed.', 'chores', 15],
   brush_teeth: ['Brush teeth', 'Brush for two minutes and rinse.', 'hygiene', 5],
-  homework: ['Finish homework', 'Complete the assigned homework and pack it away.', 'homework', 20],
-  read: ['Read for 20 minutes', 'Read quietly and mark your stopping place.', 'homework', 10],
-  dishes: ['Help with dishes', 'Clear dishes and help load or unload the dishwasher.', 'chores', 10],
-  laundry: ['Put away laundry', 'Put clean clothes where they belong.', 'chores', 12],
-  trash: ['Take out trash', 'Tie the bag, take it out, and replace the liner.', 'chores', 10],
-  pet_care: ['Pet care', 'Check food, water, and the pet area.', 'chores', 10],
-  backpack: ['Reset backpack', 'Pack homework, folders, lunch items, and supplies.', 'homework', 8],
-  bedtime: ['Bedtime routine', 'Pajamas, teeth, bathroom, and clothes ready for tomorrow.', 'hygiene', 12],
+  homework:    ['Finish homework', 'Complete the assigned homework and pack it away.', 'homework', 20],
+  read:        ['Read for 20 minutes', 'Read quietly and mark your stopping place.', 'homework', 10],
+  dishes:      ['Help with dishes', 'Clear dishes and help load or unload the dishwasher.', 'chores', 10],
+  laundry:     ['Put away laundry', 'Put clean clothes where they belong.', 'chores', 12],
+  trash:       ['Take out trash', 'Tie the bag, take it out, and replace the liner.', 'chores', 10],
+  pet_care:    ['Pet care', 'Check food, water, and the pet area.', 'chores', 10],
+  backpack:    ['Reset backpack', 'Pack homework, folders, lunch items, and supplies.', 'homework', 8],
+  bedtime:     ['Bedtime routine', 'Pajamas, teeth, bathroom, and clothes ready for tomorrow.', 'hygiene', 12],
 };
-document.getElementById('id_preset')?.addEventListener('change', event => {
-  const preset = taskPresets[event.target.value];
-  if (!preset) return;
-  document.getElementById('id_title').value = preset[0];
-  document.getElementById('id_description').value = preset[1];
-  document.getElementById('id_category').value = preset[2];
-  document.getElementById('id_points_value').value = preset[3];
+
+function applyPreset(key) {
+  const p = taskPresets[key];
+  if (!p) return;
+  document.getElementById('id_title').value = p[0];
+  document.getElementById('id_description').value = p[1];
+  document.getElementById('id_category').value = p[2];
+  document.getElementById('id_points_value').value = p[3];
+  document.getElementById('id_preset').value = key;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('preset-btn--active'));
+  document.querySelector(`.preset-btn[data-preset="${key}"]`)?.classList.add('preset-btn--active');
+  document.getElementById('id_title').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
 });
 </script>
 {% endblock %}
