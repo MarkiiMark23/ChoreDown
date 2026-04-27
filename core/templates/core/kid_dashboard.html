@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}My Dashboard — ChoreDown{% endblock %}
+{% block title %}My Dashboard — {{ APP_NAME }}{% endblock %}
 {% block content %}
 
 <div class="kid-hero">
@@ -13,17 +13,19 @@
     <span class="kid-points-label">points</span>
   </a>
   {% if submitted_tasks %}
-    <p class="kid-can-afford">Waiting for review: {{ submitted_tasks|length }} task{{ submitted_tasks|length|pluralize }}</p>
+    <p class="kid-can-afford">{{ submitted_tasks|length }} task{{ submitted_tasks|length|pluralize }} waiting for your parent to review</p>
+  {% elif next_unaffordable_reward %}
+    <p class="kid-can-afford">{{ next_unaffordable_reward.points_cost|add:"-"|add:user.points }} more pts → {{ next_unaffordable_reward.title }}!</p>
   {% elif affordable_rewards %}
-    <p class="kid-can-afford">You can afford {{ affordable_rewards|length }} reward{{ affordable_rewards|length|pluralize }}!</p>
+    <p class="kid-can-afford">You can afford {{ affordable_rewards|length }} reward{{ affordable_rewards|length|pluralize }} right now!</p>
   {% endif %}
 </div>
 
 {% if next_task %}
 <section class="section focus-section">
   <div class="section-header">
-    <h2>Next Up</h2>
-    <span class="badge badge-purple">Focus</span>
+    <h2>Do This Next</h2>
+    <span class="badge badge-purple">Today's Focus</span>
   </div>
   <div class="kid-task-card priority-{{ next_task.priority }}">
     <div class="kid-task-top">
@@ -32,16 +34,23 @@
       </a>
       <div class="kid-task-info">
         <div class="kid-task-title">{{ next_task.title }}</div>
-        {% if next_task.description %}
+        {% if next_task.parent_feedback %}
+        <div class="kid-task-desc reset-note">↩ {{ next_task.parent_feedback }}</div>
+        {% elif next_task.description %}
         <div class="kid-task-desc">{{ next_task.description }}</div>
         {% endif %}
         <div class="kid-task-meta">Due: {{ next_task.due_date|date:"M j, g:i A" }}</div>
       </div>
-      <div class="kid-task-points">+{{ next_task.points_value }}<span>possible</span></div>
+      <div class="kid-task-points">+{{ next_task.points_value }}<span>pts</span></div>
     </div>
-    <a href="{% url 'task_complete' next_task.pk %}" class="btn btn-primary btn-full btn-complete">Start / Mark Done</a>
+    <a href="{% url 'task_complete' next_task.pk %}" class="btn btn-primary btn-full btn-complete">I'm Done ✓</a>
   </div>
 </section>
+{% elif not submitted_tasks and not pending_tasks %}
+<div class="empty-state empty-state--small">
+  <div class="empty-icon">🎉</div>
+  <p>All done! No tasks right now. Great work!</p>
+</div>
 {% endif %}
 
 {% if submitted_tasks %}
@@ -52,50 +61,52 @@
   </div>
   {% for task in submitted_tasks %}
   <div class="task-row">
-    <span class="task-category-dot cat-{{ task.category }}" title="Submitted task"></span>
+    <span class="task-category-dot cat-{{ task.category }}"></span>
     <div class="task-row-info">
       <div class="task-row-title">{{ task.title }}</div>
-      <div class="task-row-meta">Possible {{ task.points_value }} pts · Submitted {{ task.submitted_at|date:"M j, g:i A" }}</div>
+      <div class="task-row-meta">{{ task.points_value }} pts possible · Submitted {{ task.submitted_at|date:"M j, g:i A" }}</div>
     </div>
-    <span class="badge badge-orange">Review</span>
+    <span class="badge badge-orange">Reviewing</span>
   </div>
   {% endfor %}
 </section>
 {% endif %}
 
+{% if pending_tasks|length > 1 %}
 <section class="section">
   <div class="section-header">
-    <h2>My Tasks</h2>
-    <a href="{% url 'task_list' %}" class="badge badge-purple">{{ pending_tasks|length }} left</a>
+    <h2>Coming Up</h2>
+    <a href="{% url 'task_list' %}" class="btn btn-sm btn-outline">See All</a>
   </div>
-  {% if pending_tasks %}
-    {% for task in pending_tasks %}
-    <div class="kid-task-card priority-{{ task.priority }}">
-      <div class="kid-task-top">
-        <a class="cat-emoji" href="{% url 'task_complete' task.pk %}" title="Open task">
-          {% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
-        </a>
-        <div class="kid-task-info">
-          <div class="kid-task-title">{{ task.title }}</div>
-          {% if task.parent_feedback %}
-          <div class="kid-task-desc">Reset note: {{ task.parent_feedback }}</div>
-          {% elif task.description %}
-          <div class="kid-task-desc">{{ task.description }}</div>
-          {% endif %}
-          <div class="kid-task-meta">Due: {{ task.due_date|date:"M j, g:i A" }}</div>
-        </div>
-        <div class="kid-task-points">+{{ task.points_value }}<span>possible</span></div>
+  {% for task in pending_tasks %}
+  {% if not forloop.first %}
+  <div class="kid-task-card priority-{{ task.priority }} {% if forloop.counter > 3 %}task-extra hidden{% endif %}">
+    <div class="kid-task-top">
+      <a class="cat-emoji" href="{% url 'task_complete' task.pk %}" title="Open task">
+        {% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
+      </a>
+      <div class="kid-task-info">
+        <div class="kid-task-title">{{ task.title }}</div>
+        {% if task.parent_feedback %}
+        <div class="kid-task-desc reset-note">↩ {{ task.parent_feedback }}</div>
+        {% elif task.description %}
+        <div class="kid-task-desc">{{ task.description }}</div>
+        {% endif %}
+        <div class="kid-task-meta">Due: {{ task.due_date|date:"M j, g:i A" }}</div>
       </div>
-      <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-full btn-complete">Mark Done ✓</a>
+      <div class="kid-task-points">+{{ task.points_value }}<span>pts</span></div>
     </div>
-    {% endfor %}
-  {% else %}
-    <div class="empty-state empty-state--small">
-      <div class="empty-icon">🎉</div>
-      <p>All done! No tasks right now.</p>
-    </div>
+    <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-full btn-complete">I'm Done ✓</a>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% if pending_tasks|length > 3 %}
+  <button class="btn btn-outline btn-full" id="show-more-tasks" style="margin-top:.5rem">
+    Show {{ pending_tasks|length|add:"-3" }} more tasks
+  </button>
   {% endif %}
 </section>
+{% endif %}
 
 {% if recent_notifications %}
 <section class="section">
@@ -134,7 +145,7 @@
 {% if recent_transactions %}
 <section class="section">
   <div class="section-header">
-    <h2>Recent Points</h2>
+    <h2>Points History</h2>
     <a href="{% url 'point_history' %}" class="btn btn-sm btn-outline">All</a>
   </div>
   {% for tx in recent_transactions %}
@@ -149,4 +160,13 @@
 </section>
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('show-more-tasks')?.addEventListener('click', function () {
+  document.querySelectorAll('.task-extra.hidden').forEach(el => el.classList.remove('hidden'));
+  this.remove();
+});
+</script>
 {% endblock %}

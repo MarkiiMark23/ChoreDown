@@ -189,6 +189,9 @@ def kid_dashboard_view(request):
     siblings = []
     if kid.parent_account:
         siblings = kid.parent_account.children.filter(is_kid=True).order_by('-points')
+    affordable_rewards = [r for r in available_rewards if r.points_cost <= kid.points]
+    unaffordable_rewards = [r for r in available_rewards if r.points_cost > kid.points]
+    next_unaffordable_reward = unaffordable_rewards[0] if unaffordable_rewards and not affordable_rewards else None
     context = {
         'kid': kid,
         'pending_tasks': pending_tasks,
@@ -199,7 +202,8 @@ def kid_dashboard_view(request):
         'available_rewards': available_rewards,
         'pending_redemptions': pending_redemptions,
         'siblings': siblings,
-        'affordable_rewards': [r for r in available_rewards if r.points_cost <= kid.points],
+        'affordable_rewards': affordable_rewards,
+        'next_unaffordable_reward': next_unaffordable_reward,
         'next_task': pending_tasks.first(),
     }
     return render(request, 'core/kid_dashboard.html', context)
@@ -418,10 +422,16 @@ def reward_list_view(request):
     pending_ids = set(
         RewardRedemption.objects.filter(kid=request.user, status='pending').values_list('reward_id', flat=True)
     )
+    kid_points = request.user.points
+    unaffordable = [r for r in rewards if r.points_cost > kid_points]
+    closest_reward = unaffordable[0] if unaffordable else None
+    closest_gap = (closest_reward.points_cost - kid_points) if closest_reward else 0
     return render(request, 'core/rewards.html', {
         'rewards': rewards,
         'pending_ids': pending_ids,
-        'kid_points': request.user.points,
+        'kid_points': kid_points,
+        'closest_reward': closest_reward,
+        'closest_gap': closest_gap,
     })
 
 

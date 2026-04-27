@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}Rewards — TaskDown{% endblock %}
+{% block title %}Rewards — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1 class="page-title">🎁 Rewards</h1>
@@ -9,14 +9,25 @@
 {% if no_parent %}
   <div class="empty-state">
     <div class="empty-icon">🔗</div>
-    <h2>Not linked to a parent</h2>
-    <p>Ask your parent to add you from their dashboard.</p>
+    <h2>Not linked to a parent yet</h2>
+    <p>Ask your parent to add you from their dashboard. Once they do, rewards will show up here.</p>
   </div>
-{% elif rewards %}
+{% else %}
+  {% if closest_reward %}
+  <div class="alert alert-info reward-goal-banner">
+    {% if closest_gap == 0 %}
+    🎉 You can redeem <strong>{{ closest_reward.title }}</strong> right now!
+    {% else %}
+    ⭐ <strong>{{ closest_gap }} more point{{ closest_gap|pluralize }}</strong> and you can get <strong>{{ closest_reward.title }}</strong>!
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if rewards %}
   <div class="rewards-grid">
     {% for reward in rewards %}
     <div class="reward-card {% if reward.points_cost > kid_points %}reward-card--locked{% endif %}">
-      <a class="reward-card-icon" href="{% if reward.points_cost <= kid_points and reward.id not in pending_ids %}{% url 'reward_redeem' reward.pk %}{% else %}{% url 'reward_list' %}{% endif %}" title="Open reward">{{ reward.icon }}</a>
+      <a class="reward-card-icon" href="{% if reward.points_cost <= kid_points and reward.id not in pending_ids %}{% url 'reward_redeem' reward.pk %}{% else %}{% url 'reward_list' %}{% endif %}" title="{{ reward.title }}">{{ reward.icon }}</a>
       <div class="reward-card-title">{{ reward.title }}</div>
       {% if reward.description %}
       <div class="reward-card-desc">{{ reward.description }}</div>
@@ -27,16 +38,17 @@
       {% elif reward.points_cost <= kid_points %}
         <a href="{% url 'reward_redeem' reward.pk %}" class="btn btn-primary btn-sm">Redeem!</a>
       {% else %}
-        <div class="reward-need-more">Keep earning to unlock this.</div>
+        <div class="reward-need-more">{{ reward.points_cost|add:"-"|add:kid_points }} pts to go</div>
       {% endif %}
     </div>
     {% endfor %}
   </div>
-{% else %}
+  {% else %}
   <div class="empty-state">
     <div class="empty-icon">🎁</div>
     <h2>No rewards yet</h2>
-    <p>Your parent hasn't added any rewards. Keep earning points!</p>
+    <p>Your parent hasn't added any rewards. Keep earning points — they'll show up here soon!</p>
   </div>
+  {% endif %}
 {% endif %}
 {% endblock %}

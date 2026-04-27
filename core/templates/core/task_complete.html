@@ -1,14 +1,14 @@
 {% extends 'core/base.html' %}
-{% block title %}Complete Task — TaskDown{% endblock %}
+{% block title %}Done! — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <a href="{% url 'task_list' %}" class="back-btn">← Back</a>
-  <h1 class="page-title">Finish Task</h1>
+  <h1 class="page-title">Nice work!</h1>
 </div>
 
 <div class="complete-card">
   <div class="complete-task-name">{{ task.title }}</div>
-  <div class="complete-points-badge">{{ task.points_value }} possible pts</div>
+  <div class="complete-points-badge">Up to {{ task.points_value }} pts</div>
 
   <form method="post" class="complete-form">
     {% csrf_token %}
@@ -30,27 +30,26 @@
     </div>
 
     <div class="form-group">
-      <label>Anything you want your parent to know? <span class="optional">(optional)</span></label>
+      <label>Want to add a note for your parent? <span class="optional">(optional)</span></label>
       {{ form.effort_note }}
     </div>
 
     <div class="form-group">
       <label class="checkbox-label">
         {{ form.did_not_finish }}
-        <span>I didn't quite finish it</span>
-        <span class="field-hint">(earns fewer points)</span>
+        <span>I didn't quite finish this one</span>
       </label>
     </div>
     <div class="form-group">
       <label class="checkbox-label">
         {{ form.not_quite }}
         <span>I mostly finished it</span>
-        <span class="field-hint">(earns slightly fewer points)</span>
       </label>
     </div>
+    <p class="field-hint" style="margin-top:-.5rem">Being honest is always okay — your parent just wants to know how it went.</p>
 
     <button type="submit" class="btn btn-primary btn-full btn-lg complete-btn">
-      Submit for Parent Review
+      Submit for Review ✓
     </button>
   </form>
 </div>
