@@ -10,6 +10,11 @@
   <form method="post">
     {% csrf_token %}
     <div class="form-group">
+      <label>Quick Pick</label>
+      {{ form.preset }}
+      <span class="field-hint">Start from a common behavior and adjust the points if needed.</span>
+    </div>
+    <div class="form-group">
       <label>Which kid?</label>
       {{ form.associated_with }}
     </div>
@@ -45,4 +50,27 @@
     <button type="submit" class="btn btn-primary btn-full">Log Behavior</button>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const behaviorPresets = {
+  helped: ['positive', 'Helped without being asked', 10],
+  kind_words: ['positive', 'Used kind words during a hard moment', 8],
+  focus_streak: ['positive', 'Stayed with a focus task', 10],
+  morning_routine: ['positive', 'Completed morning routine with fewer reminders', 10],
+  arguing: ['negative', 'Had a hard time with arguing', 8],
+  unsafe: ['negative', 'Unsafe choice that needs a reset', 15],
+  disrespect: ['negative', 'Disrespectful words or tone', 8],
+  missed_routine: ['negative', 'Missed an agreed routine step', 5],
+  repeated_reminders: ['negative', 'Needed repeated reminders after support', 5],
+};
+document.getElementById('id_preset')?.addEventListener('change', event => {
+  const preset = behaviorPresets[event.target.value];
+  if (!preset) return;
+  document.querySelector(`input[name="behavior_type"][value="${preset[0]}"]`).checked = true;
+  document.getElementById('id_description').value = preset[1];
+  document.getElementById('id_points_value').value = preset[2];
+});
+</script>
 {% endblock %}

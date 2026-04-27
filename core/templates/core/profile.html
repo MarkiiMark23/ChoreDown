@@ -1,24 +1,86 @@
 {% extends 'core/base.html' %}
-{% block title %}Profile — TaskDown{% endblock %}
+{% block title %}Profile — ChoreDown{% endblock %}
 {% block content %}
 <div class="profile-header">
-  <div class="profile-avatar" style="background:{{ user.avatar_color }}">
+  <a class="profile-avatar" href="{% url 'profile' %}" style="background:{{ user.avatar_color }}" title="Profile">
     {{ user.first_name|first|upper|default:user.username|first|upper }}
-  </div>
+  </a>
   <div class="profile-info">
-    <h1 class="profile-name">{{ user.get_full_name|default:user.username }}</h1>
+    <h1 class="profile-name">{{ user.preferred_name|default:user.get_full_name|default:user.username }}</h1>
     <span class="profile-role badge {% if user.is_parent %}badge-purple{% else %}badge-green{% endif %}">
       {% if user.is_parent %}Parent{% else %}Kid{% endif %}
     </span>
     {% if user.is_kid %}
-    <div class="profile-points">⭐ {{ user.points }} total points</div>
+    <a href="{% url 'point_history' %}" class="profile-points">⭐ {{ user.points }} total points</a>
     {% endif %}
   </div>
 </div>
 
-{% if user.is_kid and transactions %}
 <section class="section">
-  <h2>Points History</h2>
+  <div class="section-header">
+    <h2>Optional Support Profile</h2>
+  </div>
+  <div class="form-card">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-row">
+        <div class="form-group"><label>First Name</label>{{ form.first_name }}</div>
+        <div class="form-group"><label>Preferred Name</label>{{ form.preferred_name }}</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label>{{ form.email }}</div>
+        <div class="form-group"><label>Notifications</label>{{ form.notification_preference }}</div>
+      </div>
+      <div class="form-group">
+        <label>Avatar Color</label>
+        <div class="color-picker">
+          {% for value, label in form.avatar_color.field.choices %}
+          <label class="color-option">
+            <input type="radio" name="avatar_color" value="{{ value }}" {% if form.avatar_color.value == value %}checked{% endif %}>
+            <span class="color-swatch" style="background:{{ value }}" title="{{ label }}"></span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if user.is_kid %}
+      <div class="form-row">
+        <div class="form-group"><label>Age Range</label>{{ form.age_range }}</div>
+        <div class="form-group"><label>Motivation Style</label>{{ form.motivation_style }}</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Best Task Time</label>{{ form.best_task_time }}</div>
+        <div class="form-group"><label>Reminder Preference</label>{{ form.reminder_preference }}</div>
+      </div>
+      <div class="form-group"><label>Favorite Rewards</label>{{ form.favorite_rewards }}</div>
+      <div class="form-group"><label>Overwhelm Triggers</label>{{ form.overwhelm_triggers }}</div>
+      <div class="form-group"><label>Focus Supports</label>{{ form.focus_supports }}</div>
+      <div class="form-group"><label>Sensory Notes</label>{{ form.sensory_notes }}</div>
+      <div class="form-group"><label>Goals</label>{{ form.goals }}</div>
+      {% else %}
+      <div class="form-group"><label>Household Timezone</label>{{ form.household_timezone }}</div>
+      <div class="form-group"><label>Feedback Preferences</label>{{ form.feedback_preferences }}</div>
+      <div class="form-group"><label>Default Approval Note</label>{{ form.default_approval_note }}</div>
+      {% endif %}
+
+      {% if form.errors %}
+      <div class="alert alert-error">
+        {% for field, errors in form.errors.items %}
+          {% for error in errors %}{{ error }}<br>{% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-full">Save Profile</button>
+    </form>
+  </div>
+</section>
+
+{% if transactions %}
+<section class="section">
+  <div class="section-header">
+    <h2>Points History</h2>
+    <a href="{% url 'point_history' %}" class="btn btn-sm btn-outline">All</a>
+  </div>
   {% for tx in transactions %}
   <div class="tx-row">
     <span class="tx-type-icon">
@@ -33,16 +95,12 @@
       <div class="tx-desc">{{ tx.description }}</div>
       <div class="tx-date">{{ tx.created_at|date:"M j, g:i A" }}</div>
     </div>
-    <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% else %}tx-negative{% endif %}">
+    <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% elif tx.amount < 0 %}tx-negative{% endif %}">
       {% if tx.amount > 0 %}+{% endif %}{{ tx.amount }}
     </span>
   </div>
   {% endfor %}
 </section>
-{% elif user.is_kid %}
-<div class="empty-state empty-state--small">
-  <p>No points history yet. Complete a task to get started!</p>
-</div>
 {% endif %}
 
 <div class="section" style="margin-top:2rem">

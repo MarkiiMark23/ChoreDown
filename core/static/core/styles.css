@@ -89,6 +89,34 @@ a { color: var(--primary); text-decoration: none; }
   font-weight: 700;
   font-size: .95rem;
 }
+.notification-button {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+.notification-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--red);
+  color: white;
+  font-size: .65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ===========================
    Bottom Nav
@@ -227,6 +255,9 @@ a { color: var(--primary); text-decoration: none; }
   text-align: center;
   box-shadow: var(--shadow);
 }
+.stat-link { color: var(--text); display: block; }
+.stat-link:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.stats-row--wide { grid-template-columns: repeat(3, 1fr); margin-top: -.75rem; }
 .stat-card--green { background: linear-gradient(135deg, #E8F5E9, #C8E6C9); }
 .stat-card--orange { background: linear-gradient(135deg, #FFF3E0, #FFE0B2); }
 .stat-value { font-size: 1.8rem; font-weight: 800; }
@@ -245,6 +276,8 @@ a { color: var(--primary); text-decoration: none; }
   gap: 1rem;
   box-shadow: var(--shadow);
 }
+.kid-card-link { color: var(--text); }
+.kid-card-link:hover { box-shadow: var(--shadow-lg); }
 .kid-avatar {
   width: 48px;
   height: 48px;
@@ -290,6 +323,7 @@ a { color: var(--primary); text-decoration: none; }
 .task-card-header { display: flex; justify-content: space-between; margin-bottom: .6rem; }
 .task-title { font-weight: 700; margin-bottom: .3rem; }
 .task-desc { color: var(--text-muted); font-size: .85rem; margin-bottom: .5rem; }
+.task-feedback { color: #7B5800; background: #FFF9C4; border-radius: var(--radius-xs); padding: .4rem .55rem; }
 .task-meta-row { display: flex; flex-wrap: wrap; gap: .4rem; }
 .meta-chip { font-size: .75rem; padding: .2rem .5rem; border-radius: 20px; background: var(--bg); }
 .task-card-footer { display: flex; align-items: center; gap: .5rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border); }
@@ -309,6 +343,7 @@ a { color: var(--primary); text-decoration: none; }
 .priority-1 { border-left-color: var(--green); }
 .kid-task-top { display: flex; gap: .75rem; align-items: flex-start; margin-bottom: .75rem; }
 .cat-emoji { font-size: 1.5rem; flex-shrink: 0; }
+.cat-emoji:hover, .task-cat-badge:hover { transform: scale(1.03); }
 .kid-task-info { flex: 1; }
 .kid-task-title { font-weight: 700; font-size: 1rem; }
 .kid-task-desc { color: var(--text-muted); font-size: .85rem; margin-top: .2rem; }
@@ -326,7 +361,8 @@ a { color: var(--primary); text-decoration: none; }
   border-bottom: 1px solid var(--border);
 }
 .task-row:last-child { border-bottom: none; }
-.task-category-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.task-row--review { background: var(--card); border-radius: var(--radius-sm); padding: .75rem; margin-bottom: .5rem; box-shadow: var(--shadow); border-bottom: none; }
+.task-category-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: block; }
 .task-row-info { flex: 1; min-width: 0; }
 .task-row-title { font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .task-row-meta { font-size: .75rem; color: var(--text-muted); }
@@ -426,6 +462,7 @@ a { color: var(--primary); text-decoration: none; }
 .reward-card--locked { opacity: .6; }
 .reward-card--inactive { opacity: .5; }
 .reward-card-icon { font-size: 2.5rem; }
+.reward-card-icon:hover, .reward-preview:hover { transform: scale(1.03); }
 .reward-card-title { font-weight: 700; font-size: .95rem; }
 .reward-card-desc { color: var(--text-muted); font-size: .8rem; }
 .reward-card-cost { font-weight: 800; color: var(--primary); font-size: 1rem; }
@@ -609,6 +646,15 @@ a { color: var(--primary); text-decoration: none; }
   border-bottom: 1px solid var(--border);
 }
 .tx-row:last-child { border-bottom: none; }
+.notification-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .65rem 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.notification-row--unread .tx-desc { font-weight: 800; }
 .tx-icon, .tx-type-icon { font-size: 1.1rem; flex-shrink: 0; }
 .tx-body { flex: 1; min-width: 0; }
 .tx-desc { font-size: .88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -771,6 +817,38 @@ a { color: var(--primary); text-decoration: none; }
 }
 .profile-name { font-size: 1.2rem; font-weight: 700; margin-bottom: .3rem; }
 .profile-points { color: var(--primary); font-weight: 700; margin-top: .3rem; }
+
+/* ===========================
+   Notifications / Review
+=========================== */
+.notification-card {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  background: var(--card);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: .75rem;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--border);
+}
+.notification-card--unread { border-left-color: var(--primary); background: #6C63FF08; }
+.notification-card-icon { font-size: 1.4rem; flex-shrink: 0; }
+.notification-card-body { flex: 1; min-width: 0; }
+.notification-card-title { font-weight: 800; margin-bottom: .2rem; }
+.notification-card-message { color: var(--text-muted); font-size: .88rem; }
+.notification-card-meta { color: var(--text-muted); font-size: .75rem; margin-top: .35rem; }
+.review-summary {
+  text-align: left;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: .85rem;
+  margin: 1rem 0;
+  color: var(--text-muted);
+  font-size: .9rem;
+}
+.review-summary p + p { margin-top: .35rem; }
 
 /* ===========================
    Empty States

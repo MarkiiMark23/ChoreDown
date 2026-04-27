@@ -1,0 +1,31 @@
+{% extends 'core/base.html' %}
+{% block title %}Notifications — ChoreDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Notifications</h1>
+</div>
+
+{% if notifications %}
+  <section class="section">
+    {% for note in notifications %}
+    <a href="{% url 'notification_read' note.pk %}" class="notification-card {% if not note.is_read %}notification-card--unread{% endif %}">
+      <div class="notification-card-icon">
+        {% if 'task' in note.notification_type %}📋{% elif 'reward' in note.notification_type %}🎁{% else %}🔔{% endif %}
+      </div>
+      <div class="notification-card-body">
+        <div class="notification-card-title">{{ note.title }}</div>
+        <div class="notification-card-message">{{ note.message }}</div>
+        <div class="notification-card-meta">{{ note.created_at|date:"M j, g:i A" }}</div>
+      </div>
+      {% if not note.is_read %}<span class="badge badge-purple">New</span>{% endif %}
+    </a>
+    {% endfor %}
+  </section>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔔</div>
+    <h2>No notifications yet</h2>
+    <p>Approvals, reward decisions, and important updates will stay here.</p>
+  </div>
+{% endif %}
+{% endblock %}

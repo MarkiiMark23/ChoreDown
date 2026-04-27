@@ -10,6 +10,11 @@
   <form method="post">
     {% csrf_token %}
     <div class="form-group">
+      <label>Quick Pick</label>
+      {{ form.preset }}
+      <span class="field-hint">Choose a common reward, then customize the details.</span>
+    </div>
+    <div class="form-group">
       <label>Reward Name</label>
       {{ form.title }}
     </div>
@@ -48,4 +53,30 @@
     <button type="submit" class="btn btn-primary btn-full">Create Reward</button>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const rewardPresets = {
+  screen_time: ['Extra screen time', '1 extra hour of screen time.', 30, '📱'],
+  game_time: ['Game time', '30 extra minutes gaming.', 35, '🎮'],
+  movie_pick: ['Movie night pick', 'Choose the movie for family movie night.', 50, '🎬'],
+  snack: ['Special snack', 'Pick a favorite snack or treat.', 20, '🍦'],
+  allowance: ['Allowance bonus', 'Small allowance bonus approved by parent.', 50, '💰'],
+  outing: ['Special outing', 'Pick a park, library, or activity outing.', 80, '🏖️'],
+  stay_up_late: ['Stay up late', 'Stay up 30 minutes later on an approved night.', 40, '🌙'],
+  choose_dinner: ['Choose dinner', 'Choose dinner for the family.', 60, '🍕'],
+  toy_book: ['Toy or book', 'Pick a small toy, book, or activity item.', 75, '🎁'],
+  special_activity: ['Special activity', 'Choose a parent-approved activity.', 65, '🎉'],
+};
+document.getElementById('id_preset')?.addEventListener('change', event => {
+  const preset = rewardPresets[event.target.value];
+  if (!preset) return;
+  document.getElementById('id_title').value = preset[0];
+  document.getElementById('id_description').value = preset[1];
+  document.getElementById('id_points_cost').value = preset[2];
+  const icon = document.querySelector(`input[name="icon"][value="${preset[3]}"]`);
+  if (icon) icon.checked = true;
+});
+</script>
 {% endblock %}

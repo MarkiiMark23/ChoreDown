@@ -10,6 +10,11 @@
   <form method="post">
     {% csrf_token %}
     <div class="form-group">
+      <label>Quick Pick</label>
+      {{ form.preset }}
+      <span class="field-hint">Choose a common task, then edit anything you want.</span>
+    </div>
+    <div class="form-group">
       <label>Task Title</label>
       {{ form.title }}
     </div>
@@ -52,4 +57,29 @@
     <button type="submit" class="btn btn-primary btn-full">Assign Task</button>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const taskPresets = {
+  clean_room: ['Clean your room', 'Pick up clothes, clear trash, and reset the bed.', 'chores', 15],
+  brush_teeth: ['Brush teeth', 'Brush for two minutes and rinse.', 'hygiene', 5],
+  homework: ['Finish homework', 'Complete the assigned homework and pack it away.', 'homework', 20],
+  read: ['Read for 20 minutes', 'Read quietly and mark your stopping place.', 'homework', 10],
+  dishes: ['Help with dishes', 'Clear dishes and help load or unload the dishwasher.', 'chores', 10],
+  laundry: ['Put away laundry', 'Put clean clothes where they belong.', 'chores', 12],
+  trash: ['Take out trash', 'Tie the bag, take it out, and replace the liner.', 'chores', 10],
+  pet_care: ['Pet care', 'Check food, water, and the pet area.', 'chores', 10],
+  backpack: ['Reset backpack', 'Pack homework, folders, lunch items, and supplies.', 'homework', 8],
+  bedtime: ['Bedtime routine', 'Pajamas, teeth, bathroom, and clothes ready for tomorrow.', 'hygiene', 12],
+};
+document.getElementById('id_preset')?.addEventListener('change', event => {
+  const preset = taskPresets[event.target.value];
+  if (!preset) return;
+  document.getElementById('id_title').value = preset[0];
+  document.getElementById('id_description').value = preset[1];
+  document.getElementById('id_category').value = preset[2];
+  document.getElementById('id_points_value').value = preset[3];
+});
+</script>
 {% endblock %}

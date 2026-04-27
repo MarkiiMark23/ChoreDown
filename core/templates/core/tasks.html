@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block title %}Tasks — TaskDown{% endblock %}
+{% block title %}Tasks — ChoreDown{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1 class="page-title">{% if user.is_parent %}All Tasks{% else %}My Tasks{% endif %}</h1>
@@ -9,21 +9,22 @@
 </div>
 
 {% if tasks %}
-  <!-- Filter tabs -->
   <div class="filter-tabs">
     <button class="filter-tab active" data-filter="all">All</button>
-    <button class="filter-tab" data-filter="pending">Pending</button>
-    <button class="filter-tab" data-filter="done">Completed</button>
+    <button class="filter-tab" data-filter="assigned">Assigned</button>
+    <button class="filter-tab" data-filter="submitted">Review</button>
+    <button class="filter-tab" data-filter="approved">Approved</button>
+    <button class="filter-tab" data-filter="rejected">Retry</button>
   </div>
 
   <div class="task-list">
     {% for task in tasks %}
-    <div class="task-card {% if task.completed %}task-done{% endif %}" data-status="{% if task.completed %}done{% else %}pending{% endif %}">
+    <div class="task-card {% if task.status == 'approved' %}task-done{% endif %}" data-status="{{ task.status }}">
       <div class="task-card-header">
-        <span class="task-cat-badge cat-{{ task.category }}">
+        <a class="task-cat-badge cat-{{ task.category }}" href="{% if user.is_parent and task.status == 'submitted' %}{% url 'task_review' task.pk %}{% else %}#{% endif %}" title="Open task">
           {% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
           {{ task.get_category_display }}
-        </span>
+        </a>
         <span class="priority-badge priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
       </div>
       <div class="task-card-body">
@@ -31,25 +32,43 @@
         {% if task.description %}
         <p class="task-desc">{{ task.description }}</p>
         {% endif %}
+        {% if task.parent_feedback %}
+        <p class="task-desc task-feedback">Feedback: {{ task.parent_feedback }}</p>
+        {% endif %}
         <div class="task-meta-row">
           {% if user.is_parent %}
-          <span class="meta-chip">👤 {{ task.assigned_to.first_name|default:task.assigned_to.username }}</span>
+          <span class="meta-chip">👤 {{ task.assigned_to.preferred_name|default:task.assigned_to.first_name|default:task.assigned_to.username }}</span>
           {% endif %}
           <span class="meta-chip">📅 {{ task.due_date|date:"M j" }}</span>
-          <span class="meta-chip points-chip">⭐ {{ task.points_value }} pts</span>
+          <span class="meta-chip points-chip">⭐ Possible {{ task.points_value }}</span>
+          <span class="meta-chip {% if task.points_earned == None %}badge-grey{% elif task.points_earned > 0 %}badge-green{% elif task.points_earned < 0 %}badge-danger{% else %}badge-orange{% endif %}">
+            Actual {% if task.points_earned == None %}pending{% else %}{{ task.points_earned }}{% endif %}
+          </span>
         </div>
       </div>
       <div class="task-card-footer">
-        {% if task.completed %}
-          <span class="badge badge-green">✓ Completed {{ task.completed_at|date:"M j" }}</span>
+        {% if task.status == 'approved' %}
+          <span class="badge badge-green">✓ Approved {{ task.completed_at|date:"M j" }}</span>
           {% if task.fun_rating %}
           <span class="badge badge-purple">{{ task.get_fun_rating_display }}</span>
+          {% endif %}
+        {% elif task.status == 'submitted' %}
+          {% if user.is_parent %}
+          <a href="{% url 'task_review' task.pk %}" class="btn btn-primary btn-sm">Review</a>
+          {% else %}
+          <span class="badge badge-orange">Waiting for parent</span>
+          {% endif %}
+        {% elif task.status == 'rejected' %}
+          {% if user.is_kid %}
+          <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-sm">Try Again</a>
+          {% else %}
+          <span class="badge badge-danger">Needs another try</span>
           {% endif %}
         {% else %}
           {% if user.is_kid %}
           <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-sm">Mark Done ✓</a>
           {% else %}
-          <span class="badge badge-grey">Pending</span>
+          <span class="badge badge-grey">Assigned</span>
           {% endif %}
         {% endif %}
       </div>
@@ -82,5 +101,10 @@ document.querySelectorAll('.filter-tab').forEach(tab => {
     });
   });
 });
+const requestedFilter = new URLSearchParams(window.location.search).get('status');
+if (requestedFilter) {
+  const tab = document.querySelector(`.filter-tab[data-filter="${requestedFilter}"]`);
+  if (tab) tab.click();
+}
 </script>
 {% endblock %}

@@ -5,6 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from django.utils import timezone
 from django.db import transaction as db_transaction
+from django.db.models import Q
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,14 +13,17 @@ from rest_framework.authtoken.models import Token
 from rest_framework import status, generics, permissions
 from rest_framework.permissions import IsAuthenticated
 
-from .models import CustomUser, Task, Behavior, Reward, RewardRedemption, PointTransaction
+from .models import CustomUser, Task, Behavior, Reward, RewardRedemption, PointTransaction, Notification
 from .serializers import (
     TaskSerializer, TaskCompleteSerializer, BehaviorSerializer,
-    RewardSerializer, RewardRedemptionSerializer, PointTransactionSerializer,
+    RewardSerializer, RewardRedemptionSerializer, PointTransactionSerializer, NotificationSerializer,
     UserRegistrationSerializer, KidSummarySerializer,
 )
 from .permissions import IsParent, IsKid
-from .forms import ParentRegistrationForm, AddKidForm, TaskCreateForm, BehaviorLogForm, RewardCreateForm, TaskCompleteForm
+from .forms import (
+    ParentRegistrationForm, AddKidForm, TaskCreateForm, BehaviorLogForm,
+    RewardCreateForm, TaskCompleteForm, TaskReviewForm, ProfileForm,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -36,6 +40,38 @@ def _award_points(user, amount, transaction_type, description):
         transaction_type=transaction_type,
         description=description,
     )
+
+
+def _suggested_task_points(task):
+    points_earned = task.points_value
+    if task.did_not_finish:
+        points_earned = 0
+    elif task.not_quite or task.finished_late:
+        points_earned = task.points_value - (task.points_value // 4)
+    return points_earned
+
+
+def _create_notification(recipient, notification_type, title, message, actor=None, task=None, reward_redemption=None):
+    preference = recipient.notification_preference or 'in_app'
+    if preference == 'none':
+        return None
+    deliver_in_app = preference in ('in_app', 'both')
+    email_status = 'queued' if preference in ('email', 'both') and recipient.email else 'skipped'
+    return Notification.objects.create(
+        recipient=recipient,
+        actor=actor,
+        notification_type=notification_type,
+        title=title,
+        message=message,
+        deliver_in_app=deliver_in_app,
+        task=task,
+        reward_redemption=reward_redemption,
+        email_status=email_status,
+    )
+
+
+def _kid_display_name(user):
+    return user.preferred_name or user.first_name or user.username
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +129,9 @@ def parent_dashboard_view(request):
     if not request.user.is_parent:
         return redirect('kid_dashboard')
     kids = request.user.children.filter(is_kid=True)
+    pending_reviews = Task.objects.filter(
+        parent=request.user, status='submitted'
+    ).select_related('assigned_to').order_by('submitted_at')
     pending_redemptions = RewardRedemption.objects.filter(
         reward__parent=request.user, status='pending'
     ).select_related('kid', 'reward').order_by('-requested_at')
@@ -103,15 +142,28 @@ def parent_dashboard_view(request):
         logged_by=request.user
     ).select_related('associated_with').order_by('-date_logged')[:5]
     kids_sorted = kids.order_by('-points')
+    reviewed_tasks = Task.objects.filter(parent=request.user, status='approved')
+    possible_points_awarded = sum(t.points_value for t in reviewed_tasks)
+    actual_points_awarded = sum(t.points_earned or 0 for t in reviewed_tasks)
+    total_tasks = Task.objects.filter(parent=request.user).count()
+    completed_count = Task.objects.filter(parent=request.user, status='approved').count()
     context = {
         'kids': kids,
         'kids_sorted': kids_sorted,
+        'pending_reviews': pending_reviews,
         'pending_redemptions': pending_redemptions,
         'recent_tasks': recent_tasks,
         'recent_behaviors': recent_behaviors,
+        'possible_points_awarded': possible_points_awarded,
+        'actual_points_awarded': actual_points_awarded,
+        'completion_rate': round((completed_count / total_tasks) * 100) if total_tasks else 0,
+        'late_or_partial_count': Task.objects.filter(
+            parent=request.user,
+            status='approved',
+        ).filter(Q(finished_late=True) | Q(not_quite=True) | Q(did_not_finish=True)).count(),
         'total_tasks_today': Task.objects.filter(
             parent=request.user,
-            completed=True,
+            status='approved',
             completed_at__date=timezone.now().date()
         ).count(),
     }
@@ -123,9 +175,11 @@ def kid_dashboard_view(request):
     if not request.user.is_kid:
         return redirect('parent_dashboard')
     kid = request.user
-    pending_tasks = Task.objects.filter(assigned_to=kid, completed=False).order_by('due_date')
-    completed_tasks = Task.objects.filter(assigned_to=kid, completed=True).order_by('-completed_at')[:5]
+    pending_tasks = Task.objects.filter(assigned_to=kid, status__in=['assigned', 'rejected']).order_by('due_date')
+    submitted_tasks = Task.objects.filter(assigned_to=kid, status='submitted').order_by('submitted_at')
+    completed_tasks = Task.objects.filter(assigned_to=kid, status='approved').order_by('-completed_at')[:5]
     recent_transactions = kid.point_transactions.all()[:8]
+    recent_notifications = kid.notifications.filter(deliver_in_app=True)[:5]
     available_rewards = []
     if kid.parent_account:
         available_rewards = Reward.objects.filter(
@@ -138,12 +192,15 @@ def kid_dashboard_view(request):
     context = {
         'kid': kid,
         'pending_tasks': pending_tasks,
+        'submitted_tasks': submitted_tasks,
         'completed_tasks': completed_tasks,
         'recent_transactions': recent_transactions,
+        'recent_notifications': recent_notifications,
         'available_rewards': available_rewards,
         'pending_redemptions': pending_redemptions,
         'siblings': siblings,
         'affordable_rewards': [r for r in available_rewards if r.points_cost <= kid.points],
+        'next_task': pending_tasks.first(),
     }
     return render(request, 'core/kid_dashboard.html', context)
 
@@ -172,9 +229,12 @@ def add_kid_view(request):
 def task_list_view(request):
     if request.user.is_parent:
         tasks = Task.objects.filter(parent=request.user).select_related('assigned_to').order_by('-id')
+        kid_id = request.GET.get('kid')
+        if kid_id:
+            tasks = tasks.filter(assigned_to_id=kid_id)
     else:
         tasks = Task.objects.filter(assigned_to=request.user).order_by('due_date')
-    return render(request, 'core/tasks.html', {'tasks': tasks})
+    return render(request, 'core/tasks.html', {'tasks': tasks, 'status_filter': request.GET.get('status', 'all')})
 
 
 @login_required
@@ -195,33 +255,116 @@ def task_create_view(request):
 def task_complete_view(request, pk):
     if not request.user.is_kid:
         return redirect('dashboard')
-    task = get_object_or_404(Task, pk=pk, assigned_to=request.user, completed=False)
+    task = get_object_or_404(Task, pk=pk, assigned_to=request.user, status__in=['assigned', 'rejected'])
     form = TaskCompleteForm(request.POST or None, instance=task)
     if request.method == 'POST' and form.is_valid():
         with db_transaction.atomic():
             t = form.save(commit=False)
-            t.completed = True
-            t.completed_at = timezone.now()
+            t.completed = False
+            t.completed_at = None
+            t.status = 'submitted'
+            t.submitted_at = timezone.now()
+            t.reviewed_at = None
+            t.reviewed_by = None
+            t.parent_feedback = ''
+            t.points_earned = None
             t.finished_late = timezone.now() > task.due_date
             t.save()
-            points_earned = task.points_value
-            penalty = 0
-            if t.did_not_finish:
-                penalty = task.points_value // 2
-                points_earned = 0
-            elif t.not_quite:
-                penalty = task.points_value // 4
-                points_earned = task.points_value - penalty
-            elif t.finished_late:
-                penalty = task.points_value // 4
-                points_earned = task.points_value - penalty
-            if points_earned > 0:
-                _award_points(request.user, points_earned, 'task', f"Completed: {task.title}")
-            if penalty > 0:
-                _award_points(request.user, -penalty, 'penalty', f"Penalty: {task.title}")
-        messages.success(request, f"Great job! You earned {points_earned} points!")
+            _create_notification(
+                recipient=t.parent,
+                actor=request.user,
+                notification_type='task_submitted',
+                title='Task ready to review',
+                message=f"{_kid_display_name(request.user)} submitted '{task.title}' for review.",
+                task=t,
+            )
+        messages.success(request, f"Nice follow-through. Sent to parent for review. Possible reward: {task.points_value} pts.")
         return redirect('kid_dashboard')
     return render(request, 'core/task_complete.html', {'task': task, 'form': form})
+
+
+@login_required
+def task_review_view(request, pk):
+    if not request.user.is_parent:
+        return redirect('dashboard')
+    task = get_object_or_404(
+        Task.objects.select_related('assigned_to'),
+        pk=pk,
+        parent=request.user,
+        status='submitted',
+    )
+    suggested_points = _suggested_task_points(task)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        form = TaskReviewForm(request.POST, instance=task)
+        if action == 'reject':
+            feedback = request.POST.get('parent_feedback', '').strip()
+            with db_transaction.atomic():
+                task.status = 'rejected'
+                task.completed = False
+                task.points_earned = 0
+                task.reviewed_at = timezone.now()
+                task.reviewed_by = request.user
+                task.parent_feedback = feedback
+                task.save(update_fields=[
+                    'status', 'completed', 'points_earned', 'reviewed_at',
+                    'reviewed_by', 'parent_feedback',
+                ])
+                PointTransaction.objects.create(
+                    user=task.assigned_to,
+                    amount=0,
+                    transaction_type='task',
+                    description=f"Needs another try: {task.title}",
+                )
+                _create_notification(
+                    recipient=task.assigned_to,
+                    actor=request.user,
+                    notification_type='task_rejected',
+                    title='Task needs another try',
+                    message=feedback or f"'{task.title}' needs one more try before points are awarded.",
+                    task=task,
+                )
+            messages.info(request, f"Sent {_kid_display_name(task.assigned_to)} a reset note for '{task.title}'.")
+            return redirect('parent_dashboard')
+        if form.is_valid():
+            reviewed_task = form.save(commit=False)
+            with db_transaction.atomic():
+                reviewed_task.status = 'approved'
+                reviewed_task.completed = True
+                reviewed_task.completed_at = timezone.now()
+                reviewed_task.reviewed_at = timezone.now()
+                reviewed_task.reviewed_by = request.user
+                reviewed_task.save()
+                tx_type = 'task' if reviewed_task.points_earned >= 0 else 'penalty'
+                _award_points(
+                    reviewed_task.assigned_to,
+                    reviewed_task.points_earned,
+                    tx_type,
+                    f"Approved: {reviewed_task.title} ({reviewed_task.points_earned}/{reviewed_task.points_value} pts)",
+                )
+                _create_notification(
+                    recipient=reviewed_task.assigned_to,
+                    actor=request.user,
+                    notification_type='task_approved',
+                    title='Task approved',
+                    message=(
+                        f"'{reviewed_task.title}' was approved. "
+                        f"You earned {reviewed_task.points_earned} of {reviewed_task.points_value} possible points."
+                    ),
+                    task=reviewed_task,
+                )
+            messages.success(
+                request,
+                f"Approved '{reviewed_task.title}' for {reviewed_task.points_earned} actual points.",
+            )
+            return redirect('parent_dashboard')
+    else:
+        form = TaskReviewForm(instance=task, initial={'points_earned': suggested_points})
+    return render(request, 'core/task_review.html', {
+        'task': task,
+        'form': form,
+        'suggested_points': suggested_points,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -309,7 +452,15 @@ def reward_redeem_view(request, pk):
         messages.info(request, "You already have a pending request for this reward.")
         return redirect('reward_list')
     if request.method == 'POST':
-        RewardRedemption.objects.create(kid=request.user, reward=reward)
+        redemption = RewardRedemption.objects.create(kid=request.user, reward=reward)
+        _create_notification(
+            recipient=reward.parent,
+            actor=request.user,
+            notification_type='reward_requested',
+            title='New reward request',
+            message=f"{_kid_display_name(request.user)} requested '{reward.title}' for {reward.points_cost} pts.",
+            reward_redemption=redemption,
+        )
         messages.success(request, f"Redemption request sent to your parent!")
         return redirect('kid_dashboard')
     return render(request, 'core/reward_redeem_confirm.html', {'reward': reward})
@@ -351,8 +502,24 @@ def redemption_resolve_view(request, pk, action):
                 'redemption',
                 f"Redeemed: {redemption.reward.title}"
             )
+            _create_notification(
+                recipient=redemption.kid,
+                actor=request.user,
+                notification_type='reward_approved',
+                title='Reward approved',
+                message=f"Your request for '{redemption.reward.title}' was approved.",
+                reward_redemption=redemption,
+            )
             messages.success(request, f"Approved! {redemption.kid.first_name or redemption.kid.username} spent {redemption.reward.points_cost} pts.")
         else:
+            _create_notification(
+                recipient=redemption.kid,
+                actor=request.user,
+                notification_type='reward_denied',
+                title='Reward request denied',
+                message=f"Your request for '{redemption.reward.title}' was denied this time.",
+                reward_redemption=redemption,
+            )
             messages.info(request, "Redemption denied.")
     return redirect('redemption_list')
 
@@ -378,8 +545,52 @@ def leaderboard_view(request):
 
 @login_required
 def profile_view(request):
+    form = ProfileForm(request.POST or None, instance=request.user)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Profile updated.')
+        return redirect('profile')
     transactions = request.user.point_transactions.all()[:20]
-    return render(request, 'core/profile.html', {'transactions': transactions})
+    return render(request, 'core/profile.html', {'transactions': transactions, 'form': form})
+
+
+@login_required
+def notification_list_view(request):
+    notifications = request.user.notifications.filter(deliver_in_app=True)
+    return render(request, 'core/notifications.html', {'notifications': notifications})
+
+
+@login_required
+def notification_read_view(request, pk):
+    notification = get_object_or_404(
+        Notification,
+        pk=pk,
+        recipient=request.user,
+        deliver_in_app=True,
+    )
+    if not notification.is_read:
+        notification.is_read = True
+        notification.read_at = timezone.now()
+        notification.save(update_fields=['is_read', 'read_at'])
+    if notification.task_id:
+        if request.user.is_parent:
+            return redirect('task_list')
+        return redirect('kid_dashboard')
+    if notification.reward_redemption_id:
+        if request.user.is_parent:
+            return redirect('redemption_list')
+        return redirect('reward_list')
+    return redirect('notification_list')
+
+
+@login_required
+def point_history_view(request):
+    if request.user.is_parent:
+        kid_ids = list(request.user.children.filter(is_kid=True).values_list('id', flat=True))
+        transactions = PointTransaction.objects.filter(user_id__in=kid_ids).select_related('user')
+    else:
+        transactions = request.user.point_transactions.all()
+    return render(request, 'core/point_history.html', {'transactions': transactions[:100]})
 
 
 # ---------------------------------------------------------------------------
@@ -392,22 +603,29 @@ class TaskCompleteAPIView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated, IsKid]
 
     def get_queryset(self):
-        return Task.objects.filter(assigned_to=self.request.user)
+        return Task.objects.filter(assigned_to=self.request.user, status__in=['assigned', 'rejected'])
 
     def perform_update(self, serializer):
         task = self.get_object()
         with db_transaction.atomic():
-            instance = serializer.save(completed=True, completed_at=timezone.now())
-            points_earned = task.points_value
-            if instance.did_not_finish:
-                points_earned = 0
-                _award_points(self.request.user, -(task.points_value // 2), 'penalty', f"Did not finish: {task.title}")
-            elif instance.not_quite:
-                penalty = task.points_value // 4
-                points_earned = task.points_value - penalty
-                _award_points(self.request.user, points_earned, 'task', f"Completed: {task.title}")
-            else:
-                _award_points(self.request.user, points_earned, 'task', f"Completed: {task.title}")
+            instance = serializer.save(
+                completed=False,
+                completed_at=None,
+                status='submitted',
+                submitted_at=timezone.now(),
+                reviewed_at=None,
+                reviewed_by=None,
+                points_earned=None,
+                finished_late=timezone.now() > task.due_date,
+            )
+            _create_notification(
+                recipient=instance.parent,
+                actor=self.request.user,
+                notification_type='task_submitted',
+                title='Task ready to review',
+                message=f"{_kid_display_name(self.request.user)} submitted '{task.title}' for review.",
+                task=instance,
+            )
 
 
 class TaskCreateAPIView(generics.CreateAPIView):
@@ -474,6 +692,14 @@ class PointHistoryAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         return self.request.user.point_transactions.all()
+
+
+class NotificationListAPIView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.request.user.notifications.filter(deliver_in_app=True)
 
 
 class UserRegistrationView(APIView):

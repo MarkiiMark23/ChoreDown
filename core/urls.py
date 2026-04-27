@@ -16,6 +16,7 @@ urlpatterns = [
     path('tasks/', views.task_list_view, name='task_list'),
     path('tasks/create/', views.task_create_view, name='task_create'),
     path('tasks/<int:pk>/complete/', views.task_complete_view, name='task_complete'),
+    path('tasks/<int:pk>/review/', views.task_review_view, name='task_review'),
 
     path('behaviors/', views.behavior_list_view, name='behavior_list'),
     path('behaviors/log/', views.behavior_log_view, name='behavior_log'),
@@ -29,6 +30,9 @@ urlpatterns = [
 
     path('leaderboard/', views.leaderboard_view, name='leaderboard'),
     path('profile/', views.profile_view, name='profile'),
+    path('notifications/', views.notification_list_view, name='notification_list'),
+    path('notifications/<int:pk>/read/', views.notification_read_view, name='notification_read'),
+    path('points/history/', views.point_history_view, name='point_history'),
 
     # --- API views ---
     path('api/register/', views.UserRegistrationView.as_view(), name='api_register'),
@@ -40,4 +44,5 @@ urlpatterns = [
     path('api/rewards/', views.RewardListAPIView.as_view(), name='api_reward_list'),
     path('api/leaderboard/', views.LeaderboardAPIView.as_view(), name='api_leaderboard'),
     path('api/points/history/', views.PointHistoryAPIView.as_view(), name='api_point_history'),
+    path('api/notifications/', views.NotificationListAPIView.as_view(), name='api_notification_list'),
 ]
