@@ -10,7 +10,7 @@
   <div class="rewards-grid">
     {% for reward in rewards %}
     <div class="reward-card {% if not reward.is_active %}reward-card--inactive{% endif %}">
-      <div class="reward-card-icon">{{ reward.icon }}</div>
+      <a class="reward-card-icon" href="{% url 'reward_list' %}" title="Reward details">{{ reward.icon }}</a>
       <div class="reward-card-title">{{ reward.title }}</div>
       {% if reward.description %}
       <div class="reward-card-desc">{{ reward.description }}</div>

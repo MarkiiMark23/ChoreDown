@@ -1,11 +1,11 @@
-// Auto-dismiss alerts after 4 seconds
+// Auto-dismiss alerts after 9 seconds so important feedback is readable.
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.alert').forEach(alert => {
     setTimeout(() => {
       alert.style.transition = 'opacity .4s';
       alert.style.opacity = '0';
       setTimeout(() => alert.remove(), 400);
-    }, 4000);
+    }, 9000);
   });
 
   // Animate points display on kid dashboard

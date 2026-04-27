@@ -1,34 +1,68 @@
 {% extends 'core/base.html' %}
-{% block title %}Dashboard — TaskDown{% endblock %}
+{% block title %}Dashboard — ChoreDown{% endblock %}
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Hey, {{ user.first_name|default:user.username }}! 👋</h1>
-    <p class="page-sub">Here's how your family is doing today.</p>
+    <h1 class="page-title">Hey, {{ user.first_name|default:user.username }}!</h1>
+    <p class="page-sub">Reviews, points, and rewards at a glance.</p>
   </div>
   <a href="{% url 'task_create' %}" class="btn btn-primary">+ New Task</a>
 </div>
 
-<!-- Stats row -->
 <div class="stats-row">
-  <div class="stat-card">
+  <a href="{% url 'add_kid' %}" class="stat-card stat-link">
     <div class="stat-value">{{ kids|length }}</div>
     <div class="stat-label">Kids</div>
-  </div>
-  <div class="stat-card stat-card--green">
+  </a>
+  <a href="{% url 'task_list' %}?status=approved" class="stat-card stat-card--green stat-link">
     <div class="stat-value">{{ total_tasks_today }}</div>
     <div class="stat-label">Done Today</div>
+  </a>
+  <a href="{% url 'task_list' %}?status=submitted" class="stat-card stat-card--orange stat-link">
+    <div class="stat-value">{{ pending_reviews|length }}</div>
+    <div class="stat-label">Reviews</div>
+  </a>
+</div>
+
+<div class="stats-row stats-row--wide">
+  <a href="{% url 'point_history' %}" class="stat-card stat-link">
+    <div class="stat-value">{{ actual_points_awarded }}</div>
+    <div class="stat-label">Actual pts</div>
+  </a>
+  <div class="stat-card">
+    <div class="stat-value">{{ possible_points_awarded }}</div>
+    <div class="stat-label">Possible pts</div>
   </div>
-  <div class="stat-card stat-card--orange">
-    <div class="stat-value">{{ pending_redemptions|length }}</div>
-    <div class="stat-label">Requests</div>
+  <div class="stat-card">
+    <div class="stat-value">{{ completion_rate }}%</div>
+    <div class="stat-label">Approved</div>
   </div>
 </div>
 
-<!-- Kids leaderboard -->
+{% if pending_reviews %}
+<section class="section">
+  <div class="section-header">
+    <h2>Task Reviews</h2>
+    <a href="{% url 'task_list' %}?status=submitted" class="btn btn-sm btn-outline">See All</a>
+  </div>
+  {% for task in pending_reviews %}
+  <div class="task-row task-row--review">
+    <a class="task-category-dot cat-{{ task.category }}" href="{% url 'task_review' task.pk %}" title="Review task"></a>
+    <div class="task-row-info">
+      <div class="task-row-title">{{ task.title }}</div>
+      <div class="task-row-meta">
+        {{ task.assigned_to.preferred_name|default:task.assigned_to.first_name|default:task.assigned_to.username }} · Possible {{ task.points_value }} pts
+      </div>
+    </div>
+    <a href="{% url 'task_review' task.pk %}" class="btn btn-sm btn-primary">Review</a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 {% if kids %}
 <section class="section">
   <div class="section-header">
@@ -37,15 +71,15 @@
   </div>
   <div class="kids-grid">
     {% for kid in kids_sorted %}
-    <div class="kid-card">
+    <a class="kid-card kid-card-link" href="{% url 'task_list' %}?kid={{ kid.id }}">
       <div class="kid-avatar" style="background:{{ kid.avatar_color }}">
         {{ kid.first_name|first|upper|default:kid.username|first|upper }}
       </div>
       <div class="kid-info">
-        <div class="kid-name">{{ kid.first_name|default:kid.username }}</div>
+        <div class="kid-name">{{ kid.preferred_name|default:kid.first_name|default:kid.username }}</div>
         <div class="kid-stats">
           <span class="points-chip">⭐ {{ kid.points }} pts</span>
-          <span class="tasks-chip">📋 {{ kid.tasks.filter.count }} tasks</span>
+          <span class="tasks-chip">📋 {{ kid.tasks.count }} tasks</span>
         </div>
         <div class="kid-progress">
           <div class="progress-bar">
@@ -53,7 +87,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </a>
     {% endfor %}
   </div>
   {% if kids|length > 1 %}
@@ -71,7 +105,6 @@
 </div>
 {% endif %}
 
-<!-- Pending redemption requests -->
 {% if pending_redemptions %}
 <section class="section">
   <div class="section-header">
@@ -81,9 +114,9 @@
   {% for r in pending_redemptions %}
   <div class="redemption-card">
     <div class="redemption-info">
-      <span class="reward-icon">{{ r.reward.icon }}</span>
+      <a class="reward-icon" href="{% url 'redemption_list' %}" title="Open reward requests">{{ r.reward.icon }}</a>
       <div>
-        <div class="redemption-name">{{ r.kid.first_name|default:r.kid.username }} wants <strong>{{ r.reward.title }}</strong></div>
+        <div class="redemption-name">{{ r.kid.preferred_name|default:r.kid.first_name|default:r.kid.username }} wants <strong>{{ r.reward.title }}</strong></div>
         <div class="redemption-cost">{{ r.reward.points_cost }} pts</div>
       </div>
     </div>
@@ -96,7 +129,6 @@
 </section>
 {% endif %}
 
-<!-- Recent activity -->
 {% if recent_tasks %}
 <section class="section">
   <div class="section-header">
@@ -104,17 +136,24 @@
     <a href="{% url 'task_list' %}" class="btn btn-sm btn-outline">See All</a>
   </div>
   {% for task in recent_tasks %}
-  <div class="task-row {% if task.completed %}task-row--done{% endif %}">
-    <div class="task-category-dot cat-{{ task.category }}"></div>
+  <div class="task-row {% if task.status == 'approved' %}task-row--done{% endif %}">
+    <a class="task-category-dot cat-{{ task.category }}" href="{% if task.status == 'submitted' %}{% url 'task_review' task.pk %}{% else %}{% url 'task_list' %}{% endif %}" title="Open task"></a>
     <div class="task-row-info">
       <div class="task-row-title">{{ task.title }}</div>
-      <div class="task-row-meta">{{ task.assigned_to.first_name|default:task.assigned_to.username }} · {{ task.points_value }} pts</div>
+      <div class="task-row-meta">
+        {{ task.assigned_to.first_name|default:task.assigned_to.username }} · Possible {{ task.points_value }} pts
+        {% if task.points_earned != None %} · Actual {{ task.points_earned }} pts{% endif %}
+      </div>
     </div>
     <div class="task-row-status">
-      {% if task.completed %}
-        <span class="badge badge-green">Done</span>
+      {% if task.status == 'approved' %}
+        <span class="badge badge-green">Approved</span>
+      {% elif task.status == 'submitted' %}
+        <a href="{% url 'task_review' task.pk %}" class="badge badge-orange">Review</a>
+      {% elif task.status == 'rejected' %}
+        <span class="badge badge-danger">Retry</span>
       {% else %}
-        <span class="badge badge-grey">Pending</span>
+        <span class="badge badge-grey">Assigned</span>
       {% endif %}
     </div>
   </div>

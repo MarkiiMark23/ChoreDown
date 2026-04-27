@@ -8,7 +8,7 @@
 
 <div class="complete-card">
   <div class="complete-task-name">{{ task.title }}</div>
-  <div class="complete-points-badge">+{{ task.points_value }} pts</div>
+  <div class="complete-points-badge">{{ task.points_value }} possible pts</div>
 
   <form method="post" class="complete-form">
     {% csrf_token %}
@@ -30,6 +30,11 @@
     </div>
 
     <div class="form-group">
+      <label>Anything you want your parent to know? <span class="optional">(optional)</span></label>
+      {{ form.effort_note }}
+    </div>
+
+    <div class="form-group">
       <label class="checkbox-label">
         {{ form.did_not_finish }}
         <span>I didn't quite finish it</span>
@@ -45,7 +50,7 @@
     </div>
 
     <button type="submit" class="btn btn-primary btn-full btn-lg complete-btn">
-      🎉 Submit & Earn Points!
+      Submit for Parent Review
     </button>
   </form>
 </div>

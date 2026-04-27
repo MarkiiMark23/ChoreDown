@@ -21,14 +21,20 @@
       </a>
       <div class="header-right">
         {% if user.is_kid %}
-          <div class="points-badge">
+          <a href="{% url 'point_history' %}" class="points-badge" title="Open points history">
             <span class="points-icon">⭐</span>
             <span class="points-value">{{ user.points }}</span>
-          </div>
+          </a>
         {% endif %}
-        <div class="avatar" style="background:{{ user.avatar_color }}">
+        <a href="{% url 'notification_list' %}" class="notification-button" title="Open notifications">
+          <span>🔔</span>
+          {% if UNREAD_NOTIFICATIONS %}
+            <span class="notification-count">{{ UNREAD_NOTIFICATIONS }}</span>
+          {% endif %}
+        </a>
+        <a href="{% url 'profile' %}" class="avatar" style="background:{{ user.avatar_color }}" title="Open profile">
           {{ user.first_name|first|upper|default:user.username|first|upper }}
-        </div>
+        </a>
       </div>
     </div>
   </header>

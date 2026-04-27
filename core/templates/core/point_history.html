@@ -1,0 +1,36 @@
+{% extends 'core/base.html' %}
+{% block title %}Points History — ChoreDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Points History</h1>
+</div>
+
+{% if transactions %}
+<section class="section">
+  {% for tx in transactions %}
+  <div class="tx-row">
+    <span class="tx-type-icon">
+      {% if tx.transaction_type == 'task' %}📋
+      {% elif tx.transaction_type == 'behavior_positive' %}⭐
+      {% elif tx.transaction_type == 'behavior_negative' %}⚠️
+      {% elif tx.transaction_type == 'redemption' %}🎁
+      {% elif tx.transaction_type == 'bonus' %}🎉
+      {% else %}⚡{% endif %}
+    </span>
+    <div class="tx-body">
+      {% if user.is_parent %}<div class="tx-date">{{ tx.user.first_name|default:tx.user.username }}</div>{% endif %}
+      <div class="tx-desc">{{ tx.description }}</div>
+      <div class="tx-date">{{ tx.created_at|date:"M j, g:i A" }}</div>
+    </div>
+    <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% elif tx.amount < 0 %}tx-negative{% endif %}">
+      {% if tx.amount > 0 %}+{% endif %}{{ tx.amount }}
+    </span>
+  </div>
+  {% endfor %}
+</section>
+{% else %}
+<div class="empty-state empty-state--small">
+  <p>No points history yet.</p>
+</div>
+{% endif %}
+{% endblock %}

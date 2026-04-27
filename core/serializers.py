@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Task, Behavior, Reward, RewardRedemption, PointTransaction
+from .models import CustomUser, Task, Behavior, Reward, RewardRedemption, PointTransaction, Notification
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -7,15 +7,22 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = [
             'id', 'title', 'description', 'due_date', 'priority', 'category',
-            'points_value', 'completed', 'completed_at', 'parent', 'assigned_to',
+            'points_value', 'points_earned', 'status', 'completed', 'completed_at',
+            'submitted_at', 'reviewed_at', 'parent_feedback', 'parent', 'assigned_to',
         ]
-        read_only_fields = ['parent', 'completed_at']
+        read_only_fields = [
+            'parent', 'points_earned', 'status', 'completed_at',
+            'submitted_at', 'reviewed_at', 'parent_feedback',
+        ]
 
 
 class TaskCompleteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['completed', 'fun_rating', 'time_taken', 'did_not_finish', 'finished_late', 'not_quite']
+        fields = [
+            'fun_rating', 'time_taken', 'effort_note',
+            'did_not_finish', 'finished_late', 'not_quite',
+        ]
 
 
 class BehaviorSerializer(serializers.ModelSerializer):
@@ -53,6 +60,16 @@ class PointTransactionSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'notification_type', 'title', 'message', 'is_read',
+            'task', 'reward_redemption', 'email_status', 'created_at', 'read_at',
+        ]
+        read_only_fields = fields
+
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
@@ -82,10 +99,13 @@ class KidSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'first_name', 'points', 'avatar_color', 'pending_tasks', 'completed_tasks']
+        fields = [
+            'id', 'username', 'first_name', 'preferred_name', 'points',
+            'avatar_color', 'pending_tasks', 'completed_tasks',
+        ]
 
     def get_pending_tasks(self, obj):
-        return obj.tasks.filter(completed=False).count()
+        return obj.tasks.filter(status__in=['assigned', 'submitted', 'rejected']).count()
 
     def get_completed_tasks(self, obj):
-        return obj.tasks.filter(completed=True).count()
+        return obj.tasks.filter(status='approved').count()

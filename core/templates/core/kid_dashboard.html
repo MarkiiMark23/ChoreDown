@@ -1,46 +1,92 @@
 {% extends 'core/base.html' %}
-{% block title %}My Dashboard — TaskDown{% endblock %}
+{% block title %}My Dashboard — ChoreDown{% endblock %}
 {% block content %}
 
-<!-- Points hero -->
 <div class="kid-hero">
-  <div class="kid-hero-avatar" style="background:{{ user.avatar_color }}">
+  <a class="kid-hero-avatar" href="{% url 'profile' %}" style="background:{{ user.avatar_color }}" title="Open profile">
     {{ user.first_name|first|upper|default:user.username|first|upper }}
-  </div>
-  <h1 class="kid-hero-name">{{ user.first_name|default:user.username }}</h1>
-  <div class="kid-points-display">
+  </a>
+  <h1 class="kid-hero-name">{{ user.preferred_name|default:user.first_name|default:user.username }}</h1>
+  <a href="{% url 'point_history' %}" class="kid-points-display" title="Open points history">
     <span class="star-burst">⭐</span>
     <span class="kid-points-number">{{ user.points }}</span>
     <span class="kid-points-label">points</span>
-  </div>
-  {% if affordable_rewards %}
-    <p class="kid-can-afford">🎉 You can afford {{ affordable_rewards|length }} reward{{ affordable_rewards|length|pluralize }}!</p>
+  </a>
+  {% if submitted_tasks %}
+    <p class="kid-can-afford">Waiting for review: {{ submitted_tasks|length }} task{{ submitted_tasks|length|pluralize }}</p>
+  {% elif affordable_rewards %}
+    <p class="kid-can-afford">You can afford {{ affordable_rewards|length }} reward{{ affordable_rewards|length|pluralize }}!</p>
   {% endif %}
 </div>
 
-<!-- My tasks -->
+{% if next_task %}
+<section class="section focus-section">
+  <div class="section-header">
+    <h2>Next Up</h2>
+    <span class="badge badge-purple">Focus</span>
+  </div>
+  <div class="kid-task-card priority-{{ next_task.priority }}">
+    <div class="kid-task-top">
+      <a class="cat-emoji" href="{% url 'task_complete' next_task.pk %}" title="Start this task">
+        {% if next_task.category == 'chores' %}🧹{% elif next_task.category == 'homework' %}📚{% elif next_task.category == 'hygiene' %}🛁{% elif next_task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
+      </a>
+      <div class="kid-task-info">
+        <div class="kid-task-title">{{ next_task.title }}</div>
+        {% if next_task.description %}
+        <div class="kid-task-desc">{{ next_task.description }}</div>
+        {% endif %}
+        <div class="kid-task-meta">Due: {{ next_task.due_date|date:"M j, g:i A" }}</div>
+      </div>
+      <div class="kid-task-points">+{{ next_task.points_value }}<span>possible</span></div>
+    </div>
+    <a href="{% url 'task_complete' next_task.pk %}" class="btn btn-primary btn-full btn-complete">Start / Mark Done</a>
+  </div>
+</section>
+{% endif %}
+
+{% if submitted_tasks %}
+<section class="section">
+  <div class="section-header">
+    <h2>Waiting for Review</h2>
+    <span class="badge badge-orange">{{ submitted_tasks|length }}</span>
+  </div>
+  {% for task in submitted_tasks %}
+  <div class="task-row">
+    <span class="task-category-dot cat-{{ task.category }}" title="Submitted task"></span>
+    <div class="task-row-info">
+      <div class="task-row-title">{{ task.title }}</div>
+      <div class="task-row-meta">Possible {{ task.points_value }} pts · Submitted {{ task.submitted_at|date:"M j, g:i A" }}</div>
+    </div>
+    <span class="badge badge-orange">Review</span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
 <section class="section">
   <div class="section-header">
     <h2>My Tasks</h2>
-    <span class="badge badge-purple">{{ pending_tasks|length }} left</span>
+    <a href="{% url 'task_list' %}" class="badge badge-purple">{{ pending_tasks|length }} left</a>
   </div>
   {% if pending_tasks %}
     {% for task in pending_tasks %}
     <div class="kid-task-card priority-{{ task.priority }}">
       <div class="kid-task-top">
-        <span class="cat-emoji">{% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}</span>
+        <a class="cat-emoji" href="{% url 'task_complete' task.pk %}" title="Open task">
+          {% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
+        </a>
         <div class="kid-task-info">
           <div class="kid-task-title">{{ task.title }}</div>
-          {% if task.description %}
+          {% if task.parent_feedback %}
+          <div class="kid-task-desc">Reset note: {{ task.parent_feedback }}</div>
+          {% elif task.description %}
           <div class="kid-task-desc">{{ task.description }}</div>
           {% endif %}
           <div class="kid-task-meta">Due: {{ task.due_date|date:"M j, g:i A" }}</div>
         </div>
-        <div class="kid-task-points">+{{ task.points_value }}<span>pts</span></div>
+        <div class="kid-task-points">+{{ task.points_value }}<span>possible</span></div>
       </div>
-      <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-full btn-complete">
-        Mark Done ✓
-      </a>
+      <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-full btn-complete">Mark Done ✓</a>
     </div>
     {% endfor %}
   {% else %}
@@ -51,27 +97,22 @@
   {% endif %}
 </section>
 
-<!-- Leaderboard preview -->
-{% if siblings|length > 1 %}
+{% if recent_notifications %}
 <section class="section">
   <div class="section-header">
-    <h2>🏆 Leaderboard</h2>
-    <a href="{% url 'leaderboard' %}" class="btn btn-sm btn-outline">Full Board</a>
+    <h2>Updates</h2>
+    <a href="{% url 'notification_list' %}" class="btn btn-sm btn-outline">See All</a>
   </div>
-  {% for sib in siblings %}
-  <div class="leaderboard-row {% if sib == user %}leaderboard-row--me{% endif %}">
-    <span class="lb-rank">{{ forloop.counter }}</span>
-    <div class="lb-avatar" style="background:{{ sib.avatar_color }}">
-      {{ sib.first_name|first|upper|default:sib.username|first|upper }}
-    </div>
-    <span class="lb-name">{{ sib.first_name|default:sib.username }}{% if sib == user %} (you){% endif %}</span>
-    <span class="lb-points">⭐ {{ sib.points }}</span>
-  </div>
+  {% for note in recent_notifications %}
+  <a class="notification-row {% if not note.is_read %}notification-row--unread{% endif %}" href="{% url 'notification_read' note.pk %}">
+    <span class="tx-type-icon">🔔</span>
+    <span class="tx-desc">{{ note.title }}</span>
+    <span class="tx-date">{{ note.created_at|date:"M j" }}</span>
+  </a>
   {% endfor %}
 </section>
 {% endif %}
 
-<!-- Rewards preview -->
 {% if available_rewards %}
 <section class="section">
   <div class="section-header">
@@ -80,27 +121,27 @@
   </div>
   <div class="rewards-row">
     {% for reward in available_rewards|slice:":4" %}
-    <div class="reward-preview {% if reward.points_cost > user.points %}reward-locked{% endif %}">
+    <a href="{% url 'reward_list' %}" class="reward-preview {% if reward.points_cost > user.points %}reward-locked{% endif %}" title="Open rewards">
       <div class="reward-preview-icon">{{ reward.icon }}</div>
       <div class="reward-preview-title">{{ reward.title }}</div>
       <div class="reward-preview-cost">{{ reward.points_cost }} pts</div>
-    </div>
+    </a>
     {% endfor %}
   </div>
 </section>
 {% endif %}
 
-<!-- Recent history -->
 {% if recent_transactions %}
 <section class="section">
   <div class="section-header">
     <h2>Recent Points</h2>
+    <a href="{% url 'point_history' %}" class="btn btn-sm btn-outline">All</a>
   </div>
   {% for tx in recent_transactions %}
   <div class="tx-row">
-    <span class="tx-icon">{% if tx.amount > 0 %}⬆️{% else %}⬇️{% endif %}</span>
+    <span class="tx-icon">{% if tx.amount > 0 %}⬆️{% elif tx.amount < 0 %}⬇️{% else %}•{% endif %}</span>
     <span class="tx-desc">{{ tx.description }}</span>
-    <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% else %}tx-negative{% endif %}">
+    <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% elif tx.amount < 0 %}tx-negative{% endif %}">
       {% if tx.amount > 0 %}+{% endif %}{{ tx.amount }}
     </span>
   </div>

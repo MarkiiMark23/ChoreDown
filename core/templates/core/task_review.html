@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+{% block title %}Review Task — ChoreDown{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="{% url 'parent_dashboard' %}" class="back-btn">← Back</a>
+  <h1 class="page-title">Review Task</h1>
+</div>
+
+<div class="complete-card">
+  <div class="complete-task-name">{{ task.title }}</div>
+  <div class="complete-points-badge">{{ suggested_points }} / {{ task.points_value }} suggested pts</div>
+  <div class="review-summary">
+    <p><strong>Kid:</strong> {{ task.assigned_to.preferred_name|default:task.assigned_to.first_name|default:task.assigned_to.username }}</p>
+    <p><strong>Submitted:</strong> {{ task.submitted_at|date:"M j, g:i A" }}</p>
+    {% if task.finished_late %}<p><strong>Timing:</strong> Finished after the due time.</p>{% endif %}
+    {% if task.not_quite %}<p><strong>Kid note:</strong> Mostly finished.</p>{% endif %}
+    {% if task.did_not_finish %}<p><strong>Kid note:</strong> Did not finish.</p>{% endif %}
+    {% if task.effort_note %}<p><strong>Effort note:</strong> {{ task.effort_note }}</p>{% endif %}
+  </div>
+
+  <form method="post" class="complete-form">
+    {% csrf_token %}
+    <div class="form-group">
+      <label>Actual Points Earned</label>
+      {{ form.points_earned }}
+      <span class="field-hint">Use 0 for no points, or a negative number if this task should remove points.</span>
+    </div>
+    <div class="form-group">
+      <label>Feedback <span class="optional">(optional)</span></label>
+      {{ form.parent_feedback }}
+    </div>
+    {% if form.errors %}
+    <div class="alert alert-error">
+      {% for field, errors in form.errors.items %}
+        {% for error in errors %}{{ error }}<br>{% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    <button type="submit" name="action" value="approve" class="btn btn-primary btn-full btn-lg">Approve & Award Points</button>
+    <button type="submit" name="action" value="reject" class="btn btn-outline btn-full" style="margin-top:.75rem;color:#F44336;border-color:#F44336">Needs Another Try</button>
+  </form>
+</div>
+{% endblock %}

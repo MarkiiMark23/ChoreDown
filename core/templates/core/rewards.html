@@ -16,7 +16,7 @@
   <div class="rewards-grid">
     {% for reward in rewards %}
     <div class="reward-card {% if reward.points_cost > kid_points %}reward-card--locked{% endif %}">
-      <div class="reward-card-icon">{{ reward.icon }}</div>
+      <a class="reward-card-icon" href="{% if reward.points_cost <= kid_points and reward.id not in pending_ids %}{% url 'reward_redeem' reward.pk %}{% else %}{% url 'reward_list' %}{% endif %}" title="Open reward">{{ reward.icon }}</a>
       <div class="reward-card-title">{{ reward.title }}</div>
       {% if reward.description %}
       <div class="reward-card-desc">{{ reward.description }}</div>
@@ -27,7 +27,7 @@
       {% elif reward.points_cost <= kid_points %}
         <a href="{% url 'reward_redeem' reward.pk %}" class="btn btn-primary btn-sm">Redeem!</a>
       {% else %}
-        <div class="reward-need-more">Need {{ reward.points_cost|add:"-"|add:kid_points|stringformat:"d" }} more pts</div>
+        <div class="reward-need-more">Keep earning to unlock this.</div>
       {% endif %}
     </div>
     {% endfor %}
