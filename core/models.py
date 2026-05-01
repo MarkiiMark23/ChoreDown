@@ -99,7 +99,7 @@ class Task(models.Model):
 
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    due_date = models.DateTimeField()
+    due_date = models.DateTimeField(null=True, blank=True)
     priority = models.IntegerField(choices=PRIORITY_CHOICES, default=2)
     category = models.CharField(choices=CATEGORY_CHOICES, max_length=20, default='chores')
     points_value = models.PositiveIntegerField(default=10)

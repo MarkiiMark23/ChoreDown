@@ -43,7 +43,10 @@
       </div>
       <div class="kid-task-points">+{{ next_task.points_value }}<span>pts</span></div>
     </div>
-    <a href="{% url 'task_complete' next_task.pk %}" class="btn btn-primary btn-full btn-complete">I'm Done ✓</a>
+    <form method="POST" action="{% url 'task_complete' next_task.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-full btn-complete">I'm Done ✓</button>
+    </form>
   </div>
 </section>
 {% elif not submitted_tasks and not pending_tasks %}
@@ -96,7 +99,10 @@
       </div>
       <div class="kid-task-points">+{{ task.points_value }}<span>pts</span></div>
     </div>
-    <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-full btn-complete">I'm Done ✓</a>
+    <form method="POST" action="{% url 'task_complete' task.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-full btn-complete">I'm Done ✓</button>
+    </form>
   </div>
   {% endif %}
   {% endfor %}

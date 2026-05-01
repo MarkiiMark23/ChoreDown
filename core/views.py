@@ -272,7 +272,7 @@ def task_complete_view(request, pk):
             t.reviewed_by = None
             t.parent_feedback = ''
             t.points_earned = None
-            t.finished_late = timezone.now() > task.due_date
+            t.finished_late = timezone.now() > task.due_date if task.due_date else False
             t.save()
             _create_notification(
                 recipient=t.parent,
@@ -626,7 +626,7 @@ class TaskCompleteAPIView(generics.UpdateAPIView):
                 reviewed_at=None,
                 reviewed_by=None,
                 points_earned=None,
-                finished_late=timezone.now() > task.due_date,
+                finished_late=timezone.now() > task.due_date if task.due_date else False,
             )
             _create_notification(
                 recipient=instance.parent,
