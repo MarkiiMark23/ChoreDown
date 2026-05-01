@@ -5,6 +5,8 @@ __pycache__/
 *.pyd
 .env
 db.sqlite3
+local.sqlite3
+error_log.txt
 staticfiles/
 .DS_Store
 *.log

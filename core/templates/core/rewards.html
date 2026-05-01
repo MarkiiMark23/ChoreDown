@@ -3,12 +3,12 @@
 {% block content %}
 <div class="page-header">
   <h1 class="page-title">🎁 Rewards</h1>
-  <div class="points-badge-lg">⭐ {{ kid_points }} pts</div>
+  <div class="points-badge-lg" aria-label="{{ kid_points }} points"><span aria-hidden="true">⭐</span> {{ kid_points }} pts</div>
 </div>
 
 {% if no_parent %}
   <div class="empty-state">
-    <div class="empty-icon">🔗</div>
+    <div class="empty-icon" role="img" aria-hidden="true">🔗</div>
     <h2>Not linked to a parent yet</h2>
     <p>Ask your parent to add you from their dashboard. Once they do, rewards will show up here.</p>
   </div>
@@ -18,7 +18,7 @@
     {% if closest_gap == 0 %}
     🎉 You can redeem <strong>{{ closest_reward.title }}</strong> right now!
     {% else %}
-    ⭐ <strong>{{ closest_gap }} more point{{ closest_gap|pluralize }}</strong> and you can get <strong>{{ closest_reward.title }}</strong>!
+    <span aria-hidden="true">⭐</span> <strong>{{ closest_gap }} more point{{ closest_gap|pluralize }}</strong> and you can get <strong>{{ closest_reward.title }}</strong>!
     {% endif %}
   </div>
   {% endif %}
@@ -27,7 +27,9 @@
   <div class="rewards-grid">
     {% for reward in rewards %}
     <div class="reward-card {% if reward.points_cost > kid_points %}reward-card--locked{% endif %}">
-      <a class="reward-card-icon" href="{% if reward.points_cost <= kid_points and reward.id not in pending_ids %}{% url 'reward_redeem' reward.pk %}{% else %}{% url 'reward_list' %}{% endif %}" title="{{ reward.title }}">{{ reward.icon }}</a>
+      <a class="reward-card-icon" href="{% if reward.points_cost <= kid_points and reward.id not in pending_ids %}{% url 'reward_redeem' reward.pk %}{% else %}{% url 'reward_list' %}{% endif %}" title="{{ reward.title }}" aria-label="{{ reward.title }} icon">
+        <span role="img" aria-hidden="true">{{ reward.icon }}</span>
+      </a>
       <div class="reward-card-title">{{ reward.title }}</div>
       {% if reward.description %}
       <div class="reward-card-desc">{{ reward.description }}</div>
@@ -45,7 +47,7 @@
   </div>
   {% else %}
   <div class="empty-state">
-    <div class="empty-icon">🎁</div>
+    <div class="empty-icon" role="img" aria-hidden="true">🎁</div>
     <h2>No rewards yet</h2>
     <p>Your parent hasn't added any rewards. Keep earning points — they'll show up here soon!</p>
   </div>
