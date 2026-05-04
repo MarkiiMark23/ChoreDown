@@ -32,6 +32,7 @@ from .forms import (
 
 def _award_points(user, amount, transaction_type, description):
     """Add or subtract points and record the transaction."""
+    user.refresh_from_db(fields=['points'])
     user.points = max(0, user.points + amount)
     user.save(update_fields=['points'])
     PointTransaction.objects.create(
@@ -128,6 +129,51 @@ def dashboard_view(request):
 def parent_dashboard_view(request):
     if not request.user.is_parent:
         return redirect('kid_dashboard')
+    if request.method == 'POST' and request.POST.get('action') == 'approve_all_submitted':
+        pending = Task.objects.filter(
+            parent=request.user, status='submitted'
+        ).select_related('assigned_to')
+        approval_note = (request.user.default_approval_note or '').strip()
+        approved_count = 0
+        with db_transaction.atomic():
+            for task in pending:
+                points_earned = _suggested_task_points(task)
+                task.status = 'approved'
+                task.completed = True
+                task.completed_at = timezone.now()
+                task.reviewed_at = timezone.now()
+                task.reviewed_by = request.user
+                task.points_earned = points_earned
+                if approval_note and not task.parent_feedback:
+                    task.parent_feedback = approval_note
+                task.save(update_fields=[
+                    'status', 'completed', 'completed_at', 'reviewed_at',
+                    'reviewed_by', 'points_earned', 'parent_feedback',
+                ])
+                tx_type = 'task' if points_earned >= 0 else 'penalty'
+                _award_points(
+                    task.assigned_to,
+                    points_earned,
+                    tx_type,
+                    f"Approved: {task.title} ({points_earned}/{task.points_value} pts)",
+                )
+                _create_notification(
+                    recipient=task.assigned_to,
+                    actor=request.user,
+                    notification_type='task_approved',
+                    title='Task approved',
+                    message=(
+                        f"'{task.title}' was approved. "
+                        f"You earned {points_earned} of {task.points_value} possible points."
+                    ),
+                    task=task,
+                )
+                approved_count += 1
+        if approved_count:
+            messages.success(request, f"Approved {approved_count} waiting task{'' if approved_count == 1 else 's'}.")
+        else:
+            messages.info(request, "No tasks were waiting for review.")
+        return redirect('parent_dashboard')
     kids = request.user.children.filter(is_kid=True)
     pending_reviews = Task.objects.filter(
         parent=request.user, status='submitted'
@@ -260,7 +306,7 @@ def task_complete_view(request, pk):
     if not request.user.is_kid:
         return redirect('dashboard')
     task = get_object_or_404(Task, pk=pk, assigned_to=request.user, status__in=['assigned', 'rejected'])
-    form = TaskCompleteForm(request.POST or None, instance=task)
+    form = TaskCompleteForm(request.POST if request.method == 'POST' else None, instance=task)
     if request.method == 'POST' and form.is_valid():
         with db_transaction.atomic():
             t = form.save(commit=False)
@@ -318,17 +364,17 @@ def task_review_view(request, pk):
                     user=task.assigned_to,
                     amount=0,
                     transaction_type='task',
-                    description=f"Needs another try: {task.title}",
+                    description=f"Needs adjustments: {task.title}",
                 )
                 _create_notification(
                     recipient=task.assigned_to,
                     actor=request.user,
                     notification_type='task_rejected',
-                    title='Task needs another try',
-                    message=feedback or f"'{task.title}' needs one more try before points are awarded.",
+                    title='Task needs adjustments',
+                    message=feedback or f"'{task.title}' needs a small adjustment before points are awarded.",
                     task=task,
                 )
-            messages.info(request, f"Sent {_kid_display_name(task.assigned_to)} a reset note for '{task.title}'.")
+            messages.info(request, f"Sent {_kid_display_name(task.assigned_to)} an adjustment note for '{task.title}'.")
             return redirect('parent_dashboard')
         if form.is_valid():
             reviewed_task = form.save(commit=False)
@@ -359,7 +405,7 @@ def task_review_view(request, pk):
                 )
             messages.success(
                 request,
-                f"Approved '{reviewed_task.title}' for {reviewed_task.points_earned} actual points.",
+                f"Approved '{reviewed_task.title}' for {reviewed_task.points_earned} points.",
             )
             return redirect('parent_dashboard')
     else:
@@ -526,11 +572,11 @@ def redemption_resolve_view(request, pk, action):
                 recipient=redemption.kid,
                 actor=request.user,
                 notification_type='reward_denied',
-                title='Reward request denied',
-                message=f"Your request for '{redemption.reward.title}' was denied this time.",
+                title='Reward request update',
+                message=f"Your request for '{redemption.reward.title}' is not ready this time.",
                 reward_redemption=redemption,
             )
-            messages.info(request, "Redemption denied.")
+            messages.info(request, "Reward request marked not this time.")
     return redirect('redemption_list')
 
 

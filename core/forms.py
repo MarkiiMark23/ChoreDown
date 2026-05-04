@@ -207,7 +207,7 @@ class TaskCreateForm(forms.ModelForm):
         kids = parent.children.filter(is_kid=True)
         self.fields['assigned_to'].queryset = kids
         self.fields['assigned_to'].empty_label = "Select a kid"
-        if kids.exists() and not self.is_bound:
+        if kids.count() == 1 and not self.is_bound:
             self.fields['assigned_to'].initial = kids.first()
 
     def clean(self):
@@ -306,7 +306,7 @@ class TaskReviewForm(forms.ModelForm):
     def clean_points_earned(self):
         value = self.cleaned_data['points_earned']
         if value is None:
-            raise forms.ValidationError('Enter the actual points earned, even if it is 0.')
+            raise forms.ValidationError('Enter the points to award, even if it is 0.')
         return value
 
 

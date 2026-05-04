@@ -39,10 +39,10 @@
           {% if user.is_parent %}
           <span class="meta-chip">👤 {{ task.assigned_to.preferred_name|default:task.assigned_to.first_name|default:task.assigned_to.username }}</span>
           {% endif %}
-          <span class="meta-chip">📅 {{ task.due_date|date:"M j" }}</span>
+          <span class="meta-chip">📅 {% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No due date{% endif %}</span>
           <span class="meta-chip points-chip">⭐ Possible {{ task.points_value }}</span>
           <span class="meta-chip {% if task.points_earned == None %}badge-grey{% elif task.points_earned > 0 %}badge-green{% elif task.points_earned < 0 %}badge-orange{% else %}badge-orange{% endif %}">
-            {% if task.points_earned == None %}⏳ Waiting for parent{% else %}Actual {{ task.points_earned }}{% endif %}
+            {% if task.points_earned == None %}{% if task.status == 'submitted' %}⏳ Waiting for parent{% else %}Points after review{% endif %}{% else %}Awarded {{ task.points_earned }}{% endif %}
           </span>
         </div>
       </div>

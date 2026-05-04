@@ -39,7 +39,7 @@
         {% elif next_task.description %}
         <div class="kid-task-desc">{{ next_task.description }}</div>
         {% endif %}
-        <div class="kid-task-meta">Due: {{ next_task.due_date|date:"M j, g:i A" }}</div>
+        <div class="kid-task-meta">{% if next_task.due_date %}Due: {{ next_task.due_date|date:"M j, g:i A" }}{% else %}No due date{% endif %}</div>
       </div>
       <div class="kid-task-points">+{{ next_task.points_value }}<span>pts</span></div>
     </div>
@@ -95,7 +95,7 @@
         {% elif task.description %}
         <div class="kid-task-desc">{{ task.description }}</div>
         {% endif %}
-        <div class="kid-task-meta">Due: {{ task.due_date|date:"M j, g:i A" }}</div>
+        <div class="kid-task-meta">{% if task.due_date %}Due: {{ task.due_date|date:"M j, g:i A" }}{% else %}No due date{% endif %}</div>
       </div>
       <div class="kid-task-points">+{{ task.points_value }}<span>pts</span></div>
     </div>

@@ -31,7 +31,13 @@
 <section class="section">
   <div class="section-header">
     <h2>Needs Your Review</h2>
-    <a href="{% url 'task_list' %}?status=submitted" class="btn btn-sm btn-outline">See All</a>
+    <div class="section-actions">
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="action" value="approve_all_submitted" class="btn btn-sm btn-green">Approve All</button>
+      </form>
+      <a href="{% url 'task_list' %}?status=submitted" class="btn btn-sm btn-outline">See All</a>
+    </div>
   </div>
   {% for task in pending_reviews %}
   <div class="task-row task-row--review">
@@ -131,7 +137,7 @@
     </div>
     <div class="redemption-actions">
       <a href="{% url 'redemption_resolve' r.pk 'approve' %}" class="btn btn-sm btn-green">✓ Approve</a>
-      <a href="{% url 'redemption_resolve' r.pk 'deny' %}" class="btn btn-sm btn-outline">Deny</a>
+      <a href="{% url 'redemption_resolve' r.pk 'deny' %}" class="btn btn-sm btn-outline">Not this time</a>
     </div>
   </div>
   {% endfor %}
@@ -160,7 +166,7 @@
       {% elif task.status == 'submitted' %}
         <a href="{% url 'task_review' task.pk %}" class="badge badge-orange">Review</a>
       {% elif task.status == 'rejected' %}
-        <span class="badge badge-danger">Retry</span>
+        <span class="badge badge-orange">Needs adjustments</span>
       {% else %}
         <span class="badge badge-grey">Assigned</span>
       {% endif %}
