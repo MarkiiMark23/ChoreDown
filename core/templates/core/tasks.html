@@ -2,7 +2,7 @@
 {% block title %}Tasks — ChoreDown{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title">{% if user.is_parent %}All Tasks{% else %}My Tasks{% endif %}</h1>
+  <h1 class="page-title">{% if user.is_parent %}All Tasks{% else %}Today's Focus{% endif %}</h1>
   {% if user.is_parent %}
   <a href="{% url 'task_create' %}" class="btn btn-primary">+ New Task</a>
   {% endif %}
@@ -14,7 +14,7 @@
     <button class="filter-tab" data-filter="assigned">Assigned</button>
     <button class="filter-tab" data-filter="submitted">Review</button>
     <button class="filter-tab" data-filter="approved">Approved</button>
-    <button class="filter-tab" data-filter="rejected">Retry</button>
+    <button class="filter-tab" data-filter="rejected">Adjustments</button>
   </div>
 
   <div class="task-list">
@@ -39,10 +39,10 @@
           {% if user.is_parent %}
           <span class="meta-chip">👤 {{ task.assigned_to.preferred_name|default:task.assigned_to.first_name|default:task.assigned_to.username }}</span>
           {% endif %}
-          <span class="meta-chip">📅 {{ task.due_date|date:"M j" }}</span>
+          <span class="meta-chip">📅 {% if task.due_date %}{{ task.due_date|date:"M j" }}{% else %}No due date{% endif %}</span>
           <span class="meta-chip points-chip">⭐ Possible {{ task.points_value }}</span>
-          <span class="meta-chip {% if task.points_earned == None %}badge-grey{% elif task.points_earned > 0 %}badge-green{% elif task.points_earned < 0 %}badge-danger{% else %}badge-orange{% endif %}">
-            Actual {% if task.points_earned == None %}pending{% else %}{{ task.points_earned }}{% endif %}
+          <span class="meta-chip {% if task.points_earned == None %}badge-grey{% elif task.points_earned > 0 %}badge-green{% elif task.points_earned < 0 %}badge-orange{% else %}badge-orange{% endif %}">
+            {% if task.points_earned == None %}{% if task.status == 'submitted' %}⏳ Waiting for parent{% else %}Points after review{% endif %}{% else %}Awarded {{ task.points_earned }}{% endif %}
           </span>
         </div>
       </div>
@@ -60,13 +60,19 @@
           {% endif %}
         {% elif task.status == 'rejected' %}
           {% if user.is_kid %}
-          <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-sm">Try Again</a>
+          <form method="POST" action="{% url 'task_complete' task.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-sm">Try Again</button>
+          </form>
           {% else %}
-          <span class="badge badge-danger">Needs another try</span>
+          <span class="badge badge-orange">Needs adjustments</span>
           {% endif %}
         {% else %}
           {% if user.is_kid %}
-          <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-sm">Mark Done ✓</a>
+          <form method="POST" action="{% url 'task_complete' task.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-sm">Mark Done ✓</button>
+          </form>
           {% else %}
           <span class="badge badge-grey">Assigned</span>
           {% endif %}

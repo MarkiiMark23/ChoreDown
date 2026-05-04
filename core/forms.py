@@ -198,11 +198,17 @@ class TaskCreateForm(forms.ModelForm):
             'due_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'points_value': forms.NumberInput(attrs={'min': 1, 'max': 100}),
         }
+        labels = {
+            'due_date': 'When? (Optional)',
+        }
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['assigned_to'].queryset = parent.children.filter(is_kid=True)
+        kids = parent.children.filter(is_kid=True)
+        self.fields['assigned_to'].queryset = kids
         self.fields['assigned_to'].empty_label = "Select a kid"
+        if kids.count() == 1 and not self.is_bound:
+            self.fields['assigned_to'].initial = kids.first()
 
     def clean(self):
         cleaned = super().clean()
@@ -300,7 +306,7 @@ class TaskReviewForm(forms.ModelForm):
     def clean_points_earned(self):
         value = self.cleaned_data['points_earned']
         if value is None:
-            raise forms.ValidationError('Enter the actual points earned, even if it is 0.')
+            raise forms.ValidationError('Enter the points to award, even if it is 0.')
         return value
 
 

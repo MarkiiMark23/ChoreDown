@@ -19,7 +19,7 @@
     </div>
     <div class="redemption-actions">
       <a href="{% url 'redemption_resolve' r.pk 'approve' %}" class="btn btn-green">✓ Approve</a>
-      <a href="{% url 'redemption_resolve' r.pk 'deny' %}" class="btn btn-danger">✗ Deny</a>
+      <a href="{% url 'redemption_resolve' r.pk 'deny' %}" class="btn btn-outline">Not this time</a>
     </div>
   </div>
   {% endfor %}
@@ -43,8 +43,8 @@
         <div class="redemption-meta">{{ r.reward.points_cost }} pts · {{ r.resolved_at|date:"M j" }}</div>
       </div>
     </div>
-    <span class="badge {% if r.status == 'approved' %}badge-green{% else %}badge-danger{% endif %}">
-      {{ r.get_status_display }}
+    <span class="badge {% if r.status == 'approved' %}badge-green{% else %}badge-orange{% endif %}">
+      {% if r.status == 'approved' %}Approved{% else %}Not this time{% endif %}
     </span>
   </div>
   {% endfor %}

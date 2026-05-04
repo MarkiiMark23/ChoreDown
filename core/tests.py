@@ -50,6 +50,15 @@ class TaskReviewWorkflowTests(TestCase):
             deliver_in_app=True,
         ).exists())
 
+    def test_kid_can_submit_task_with_one_tap_empty_form(self):
+        self.client.force_login(self.kid)
+        response = self.client.post(reverse('task_complete', args=[self.task.pk]), {})
+
+        self.assertRedirects(response, reverse('kid_dashboard'))
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, 'submitted')
+        self.assertIsNone(self.task.points_earned)
+
     def test_parent_approval_awards_actual_points_once(self):
         self.task.status = 'submitted'
         self.task.submitted_at = timezone.now()
@@ -117,6 +126,33 @@ class TaskReviewWorkflowTests(TestCase):
             notification_type='task_rejected',
             message__contains='under the bed',
         ).exists())
+
+    def test_parent_can_approve_all_waiting_tasks(self):
+        second_task = Task.objects.create(
+            title='Dishes',
+            points_value=6,
+            parent=self.parent,
+            assigned_to=self.kid,
+            status='submitted',
+            submitted_at=timezone.now(),
+        )
+        self.task.status = 'submitted'
+        self.task.submitted_at = timezone.now()
+        self.task.save()
+
+        self.client.force_login(self.parent)
+        response = self.client.post(reverse('parent_dashboard'), {
+            'action': 'approve_all_submitted',
+        })
+
+        self.assertRedirects(response, reverse('parent_dashboard'))
+        self.kid.refresh_from_db()
+        self.task.refresh_from_db()
+        second_task.refresh_from_db()
+        self.assertEqual(self.kid.points, 16)
+        self.assertEqual(self.task.status, 'approved')
+        self.assertEqual(second_task.status, 'approved')
+        self.assertEqual(PointTransaction.objects.filter(user=self.kid).count(), 2)
 
     def test_parent_cannot_review_another_family_task(self):
         other_parent = CustomUser.objects.create_user(username='other', password='pass12345', is_parent=True)

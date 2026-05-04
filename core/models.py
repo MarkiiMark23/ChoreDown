@@ -74,7 +74,7 @@ class Task(models.Model):
         ('assigned', 'Assigned'),
         ('submitted', 'Submitted for Review'),
         ('approved', 'Approved'),
-        ('rejected', 'Needs Another Try'),
+        ('rejected', 'Needs Adjustments'),
     ]
     PRIORITY_CHOICES = [
         (1, 'Low'),
@@ -99,7 +99,7 @@ class Task(models.Model):
 
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    due_date = models.DateTimeField()
+    due_date = models.DateTimeField(null=True, blank=True)
     priority = models.IntegerField(choices=PRIORITY_CHOICES, default=2)
     category = models.CharField(choices=CATEGORY_CHOICES, max_length=20, default='chores')
     points_value = models.PositiveIntegerField(default=10)
@@ -132,7 +132,7 @@ class Task(models.Model):
     @property
     def actual_points_label(self):
         if self.points_earned is None:
-            return 'Pending'
+            return 'Waiting for parent'
         sign = '+' if self.points_earned > 0 else ''
         return f'{sign}{self.points_earned} pts'
 
@@ -170,7 +170,7 @@ class RewardRedemption(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('approved', 'Approved'),
-        ('denied', 'Denied'),
+        ('denied', 'Not This Time'),
     ]
 
     kid = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='redemptions')
@@ -215,10 +215,10 @@ class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('task_submitted', 'Task Submitted'),
         ('task_approved', 'Task Approved'),
-        ('task_rejected', 'Task Needs Another Try'),
+        ('task_rejected', 'Task Needs Adjustments'),
         ('reward_requested', 'Reward Requested'),
         ('reward_approved', 'Reward Approved'),
-        ('reward_denied', 'Reward Denied'),
+        ('reward_denied', 'Reward Not This Time'),
         ('points_changed', 'Points Changed'),
         ('system', 'System'),
     ]

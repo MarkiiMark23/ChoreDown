@@ -1,5 +1,5 @@
 /* ===========================
-   TaskDown — Design System
+   ChoreDown — Design System
    Mobile-first, PWA-ready
 =========================== */
 
@@ -238,6 +238,8 @@ a { color: var(--primary); text-decoration: none; }
   margin-bottom: .75rem;
 }
 .section-header h2 { font-size: 1rem; font-weight: 700; }
+.section-actions { display: flex; align-items: center; gap: .5rem; }
+.section-actions form { margin: 0; }
 
 /* ===========================
    Stats Row
@@ -525,7 +527,7 @@ a { color: var(--primary); text-decoration: none; }
 .redemption-cost, .redemption-meta { font-size: .8rem; color: var(--text-muted); }
 .redemption-actions { display: flex; gap: .5rem; flex-shrink: 0; }
 .redemption-card--approved { border-left: 4px solid var(--green); }
-.redemption-card--denied { border-left: 4px solid var(--red); opacity: .7; }
+.redemption-card--denied { border-left: 4px solid var(--orange); opacity: .85; }
 .redemption-card--pending { border-left: 4px solid var(--orange); }
 
 /* ===========================
@@ -1134,6 +1136,8 @@ a { color: var(--primary); text-decoration: none; }
   transition: all .15s;
 }
 .feedback-chip:hover { border-color: var(--primary); color: var(--primary); background: #6C63FF08; }
+.feedback-chip--active { border-color: var(--primary); color: var(--primary); background: #6C63FF15; }
+.point-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .5rem; }
 
 /* ===========================
    Review summary

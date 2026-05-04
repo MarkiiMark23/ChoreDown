@@ -7,8 +7,8 @@
     {{ user.first_name|first|upper|default:user.username|first|upper }}
   </a>
   <h1 class="kid-hero-name">{{ user.preferred_name|default:user.first_name|default:user.username }}</h1>
-  <a href="{% url 'point_history' %}" class="kid-points-display" title="Open points history">
-    <span class="star-burst">⭐</span>
+  <a href="{% url 'point_history' %}" class="kid-points-display" title="Open points history" aria-label="Open points history. You have {{ user.points }} points.">
+    <span class="star-burst" role="img" aria-hidden="true">⭐</span>
     <span class="kid-points-number">{{ user.points }}</span>
     <span class="kid-points-label">points</span>
   </a>
@@ -29,8 +29,8 @@
   </div>
   <div class="kid-task-card priority-{{ next_task.priority }}">
     <div class="kid-task-top">
-      <a class="cat-emoji" href="{% url 'task_complete' next_task.pk %}" title="Start this task">
-        {% if next_task.category == 'chores' %}🧹{% elif next_task.category == 'homework' %}📚{% elif next_task.category == 'hygiene' %}🛁{% elif next_task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
+      <a class="cat-emoji" href="{% url 'task_complete' next_task.pk %}" title="Start this task" aria-label="Start task: {{ next_task.title }}">
+        <span role="img" aria-hidden="true">{% if next_task.category == 'chores' %}🧹{% elif next_task.category == 'homework' %}📚{% elif next_task.category == 'hygiene' %}🛁{% elif next_task.category == 'outdoor' %}🌳{% else %}✅{% endif %}</span>
       </a>
       <div class="kid-task-info">
         <div class="kid-task-title">{{ next_task.title }}</div>
@@ -39,16 +39,19 @@
         {% elif next_task.description %}
         <div class="kid-task-desc">{{ next_task.description }}</div>
         {% endif %}
-        <div class="kid-task-meta">Due: {{ next_task.due_date|date:"M j, g:i A" }}</div>
+        <div class="kid-task-meta">{% if next_task.due_date %}Due: {{ next_task.due_date|date:"M j, g:i A" }}{% else %}No due date{% endif %}</div>
       </div>
       <div class="kid-task-points">+{{ next_task.points_value }}<span>pts</span></div>
     </div>
-    <a href="{% url 'task_complete' next_task.pk %}" class="btn btn-primary btn-full btn-complete">I'm Done ✓</a>
+    <form method="POST" action="{% url 'task_complete' next_task.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-full btn-complete">I'm Done ✓</button>
+    </form>
   </div>
 </section>
 {% elif not submitted_tasks and not pending_tasks %}
 <div class="empty-state empty-state--small">
-  <div class="empty-icon">🎉</div>
+  <div class="empty-icon" role="img" aria-label="celebration">🎉</div>
   <p>All done! No tasks right now. Great work!</p>
 </div>
 {% endif %}
@@ -82,8 +85,8 @@
   {% if not forloop.first %}
   <div class="kid-task-card priority-{{ task.priority }} {% if forloop.counter > 3 %}task-extra hidden{% endif %}">
     <div class="kid-task-top">
-      <a class="cat-emoji" href="{% url 'task_complete' task.pk %}" title="Open task">
-        {% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}
+      <a class="cat-emoji" href="{% url 'task_complete' task.pk %}" title="Open task" aria-label="Open task: {{ task.title }}">
+        <span role="img" aria-hidden="true">{% if task.category == 'chores' %}🧹{% elif task.category == 'homework' %}📚{% elif task.category == 'hygiene' %}🛁{% elif task.category == 'outdoor' %}🌳{% else %}✅{% endif %}</span>
       </a>
       <div class="kid-task-info">
         <div class="kid-task-title">{{ task.title }}</div>
@@ -92,11 +95,14 @@
         {% elif task.description %}
         <div class="kid-task-desc">{{ task.description }}</div>
         {% endif %}
-        <div class="kid-task-meta">Due: {{ task.due_date|date:"M j, g:i A" }}</div>
+        <div class="kid-task-meta">{% if task.due_date %}Due: {{ task.due_date|date:"M j, g:i A" }}{% else %}No due date{% endif %}</div>
       </div>
       <div class="kid-task-points">+{{ task.points_value }}<span>pts</span></div>
     </div>
-    <a href="{% url 'task_complete' task.pk %}" class="btn btn-primary btn-full btn-complete">I'm Done ✓</a>
+    <form method="POST" action="{% url 'task_complete' task.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary btn-full btn-complete">I'm Done ✓</button>
+    </form>
   </div>
   {% endif %}
   {% endfor %}
@@ -116,7 +122,7 @@
   </div>
   {% for note in recent_notifications %}
   <a class="notification-row {% if not note.is_read %}notification-row--unread{% endif %}" href="{% url 'notification_read' note.pk %}">
-    <span class="tx-type-icon">🔔</span>
+    <span class="tx-type-icon" role="img" aria-hidden="true">🔔</span>
     <span class="tx-desc">{{ note.title }}</span>
     <span class="tx-date">{{ note.created_at|date:"M j" }}</span>
   </a>
@@ -133,7 +139,7 @@
   <div class="rewards-row">
     {% for reward in available_rewards|slice:":4" %}
     <a href="{% url 'reward_list' %}" class="reward-preview {% if reward.points_cost > user.points %}reward-locked{% endif %}" title="Open rewards">
-      <div class="reward-preview-icon">{{ reward.icon }}</div>
+      <div class="reward-preview-icon" role="img" aria-label="{{ reward.title }} icon">{{ reward.icon }}</div>
       <div class="reward-preview-title">{{ reward.title }}</div>
       <div class="reward-preview-cost">{{ reward.points_cost }} pts</div>
     </a>
@@ -150,7 +156,7 @@
   </div>
   {% for tx in recent_transactions %}
   <div class="tx-row">
-    <span class="tx-icon">{% if tx.amount > 0 %}⬆️{% elif tx.amount < 0 %}⬇️{% else %}•{% endif %}</span>
+    <span class="tx-icon" role="img" aria-hidden="true">{% if tx.amount > 0 %}⬆️{% elif tx.amount < 0 %}⬇️{% else %}•{% endif %}</span>
     <span class="tx-desc">{{ tx.description }}</span>
     <span class="tx-amount {% if tx.amount > 0 %}tx-positive{% elif tx.amount < 0 %}tx-negative{% endif %}">
       {% if tx.amount > 0 %}+{% endif %}{{ tx.amount }}

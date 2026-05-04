@@ -1,6 +1,6 @@
 {
-  "name": "TaskDown",
-  "short_name": "TaskDown",
+  "name": "ChoreDown",
+  "short_name": "ChoreDown",
   "description": "Family task and rewards tracker",
   "start_url": "/",
   "display": "standalone",

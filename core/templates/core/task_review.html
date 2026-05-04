@@ -22,6 +22,11 @@
     {% csrf_token %}
     <div class="form-group">
       <label>Points to award</label>
+      <div class="point-chips" aria-label="Quick point choices">
+        <button type="button" class="feedback-chip point-chip" data-points="0">0</button>
+        <button type="button" class="feedback-chip point-chip" data-points="{{ suggested_points }}">Suggested</button>
+        <button type="button" class="feedback-chip point-chip" data-points="{{ task.points_value }}">Full</button>
+      </div>
       {{ form.points_earned }}
       <span class="field-hint">Suggested: {{ suggested_points }}. Change it if you think a different amount fits better.</span>
     </div>
@@ -46,7 +51,7 @@
       ✓ Approve &amp; Award Points
     </button>
     <button type="submit" name="action" value="reject" class="btn btn-outline btn-full" style="color:#FF9800;border-color:#FF9800">
-      ↩ Needs Another Try
+      ↩ Needs adjustments
     </button>
   </form>
 </div>
@@ -58,5 +63,12 @@ function setFeedback(text) {
   const field = document.getElementById('id_parent_feedback');
   if (field) field.value = text;
 }
+document.querySelectorAll('.point-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('id_points_earned').value = btn.dataset.points;
+    document.querySelectorAll('.point-chip').forEach(b => b.classList.remove('feedback-chip--active'));
+    btn.classList.add('feedback-chip--active');
+  });
+});
 </script>
 {% endblock %}

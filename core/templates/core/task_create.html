@@ -56,12 +56,20 @@
     <div class="form-row">
       <div class="form-group">
         <label>Points</label>
+        <div class="point-chips" aria-label="Quick point choices">
+          <button type="button" class="feedback-chip point-chip" data-points="5">5</button>
+          <button type="button" class="feedback-chip point-chip" data-points="10">10</button>
+          <button type="button" class="feedback-chip point-chip" data-points="15">15</button>
+          <button type="button" class="feedback-chip point-chip" data-points="20">20</button>
+          <button type="button" class="feedback-chip point-chip" data-points="30">30</button>
+        </div>
         {{ form.points_value }}
-        <span class="field-hint">Presets suggest a value — adjust freely.</span>
+        <span class="field-hint">Tap a common size or type a custom value.</span>
       </div>
       <div class="form-group">
-        <label>Due Date &amp; Time</label>
+        <label>Due Date &amp; Time <span class="optional">(optional)</span></label>
         {{ form.due_date }}
+        <span class="field-hint">Leave blank for anytime tasks.</span>
       </div>
     </div>
     {% if form.errors %}
@@ -106,6 +114,14 @@ function applyPreset(key) {
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+document.querySelectorAll('.point-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('id_points_value').value = btn.dataset.points;
+    document.querySelectorAll('.point-chip').forEach(b => b.classList.remove('feedback-chip--active'));
+    btn.classList.add('feedback-chip--active');
+  });
 });
 </script>
 {% endblock %}
