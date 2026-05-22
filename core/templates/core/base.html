@@ -7,6 +7,8 @@
   <meta name="theme-color" content="#6C63FF">
   <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'core/styles.css' %}">
+  <link rel="icon" type="image/svg+xml" href="{% static 'core/icon.svg' %}">
+  <link rel="apple-touch-icon" href="{% static 'core/icon.svg' %}">
   <link rel="manifest" href="{% static 'core/manifest.json' %}">
   {% block extra_head %}{% endblock %}
 </head>

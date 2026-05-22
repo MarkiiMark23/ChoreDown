@@ -23,14 +23,15 @@ class PointTransactionInline(admin.TabularInline):
 class CustomUserAdmin(UserAdmin):
     list_display = [
         'username', 'first_name', 'email', 'is_parent', 'is_kid',
-        'points', 'parent_account', 'notification_preference',
+        'points', 'parent_account', 'family_code', 'notification_preference',
     ]
     list_filter = ['is_parent', 'is_kid', 'notification_preference', 'motivation_style', 'reminder_preference']
-    search_fields = ['username', 'first_name', 'last_name', 'email', 'preferred_name', 'parent_account__username']
+    search_fields = ['username', 'first_name', 'last_name', 'email', 'preferred_name', 'parent_account__username', 'family_code']
+    readonly_fields = ['family_code']
     fieldsets = UserAdmin.fieldsets + (
         ('ChoreDown account', {
             'fields': (
-                'is_parent', 'is_kid', 'points', 'parent_account', 'avatar_color',
+                'is_parent', 'is_kid', 'points', 'parent_account', 'family_code', 'avatar_color',
                 'notification_preference', 'preferred_name',
             )
         }),

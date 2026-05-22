@@ -15,7 +15,7 @@
   {% if submitted_tasks %}
     <p class="kid-can-afford">{{ submitted_tasks|length }} task{{ submitted_tasks|length|pluralize }} waiting for your parent to review</p>
   {% elif next_unaffordable_reward %}
-    <p class="kid-can-afford">{{ next_unaffordable_reward.points_cost|add:"-"|add:user.points }} more pts → {{ next_unaffordable_reward.title }}!</p>
+    <p class="kid-can-afford">{{ next_unaffordable_reward.points_needed }} more pt{{ next_unaffordable_reward.points_needed|pluralize }} → {{ next_unaffordable_reward.title }}!</p>
   {% elif affordable_rewards %}
     <p class="kid-can-afford">You can afford {{ affordable_rewards|length }} reward{{ affordable_rewards|length|pluralize }} right now!</p>
   {% endif %}

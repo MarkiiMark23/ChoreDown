@@ -16,6 +16,38 @@
   </div>
 </div>
 
+{% if user.is_parent %}
+<section class="section">
+  <div class="section-header">
+    <h2>Your family</h2>
+  </div>
+  <div class="form-card">
+    <p class="form-intro">Share this code with a partner or co-parent. When they create an account and enter it, you'll both manage the same kids, tasks, and rewards.</p>
+    <div class="family-code-box" style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin:.5rem 0 1rem">
+      <code id="family-code" style="font-size:1.6rem;font-weight:800;letter-spacing:.25em;background:#f3f1ff;color:#6C63FF;padding:.5rem 1rem;border-radius:12px">{{ family_code }}</code>
+      <button type="button" class="btn btn-sm btn-outline" id="copy-family-code" data-code="{{ family_code }}">Copy</button>
+    </div>
+    <div class="family-members">
+      <div class="field-hint" style="margin-bottom:.35rem">Parents in this family</div>
+      <div class="family-chip-row" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem">
+        <span class="badge badge-purple">{{ user.preferred_name|default:user.first_name|default:user.username }} (you)</span>
+        {% for p in co_parents %}
+          <span class="badge badge-purple">{{ p.preferred_name|default:p.first_name|default:p.username }}</span>
+        {% endfor %}
+      </div>
+      <div class="field-hint" style="margin-bottom:.35rem">Kids</div>
+      <div class="family-chip-row" style="display:flex;flex-wrap:wrap;gap:.4rem">
+        {% for k in family_kids %}
+          <span class="badge badge-green">{{ k.preferred_name|default:k.first_name|default:k.username }}</span>
+        {% empty %}
+          <span class="field-hint">No kids yet — <a href="{% url 'add_kid' %}">add one</a>.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <section class="section">
   <div class="section-header">
     <h2>{% if user.is_kid %}Support Profile{% else %}Your Settings{% endif %}</h2>
@@ -166,4 +198,21 @@
 <div class="section" style="margin-top:2rem">
   <a href="{% url 'logout' %}" class="btn btn-outline btn-full" style="color:#F44336;border-color:#F44336">Sign Out</a>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('copy-family-code')?.addEventListener('click', function () {
+  const code = this.dataset.code || '';
+  const done = () => { const t = this.textContent; this.textContent = 'Copied!'; setTimeout(() => { this.textContent = t; }, 1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(done).catch(done);
+  } else {
+    const r = document.createRange(); r.selectNode(document.getElementById('family-code'));
+    window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+    try { document.execCommand('copy'); } catch (e) {}
+    window.getSelection().removeAllRanges(); done();
+  }
+});
+</script>
 {% endblock %}

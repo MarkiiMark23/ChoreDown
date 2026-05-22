@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core import mail
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -198,7 +199,10 @@ class RewardNotificationTests(TestCase):
         self.assertEqual(self.kid.points, 25)
         note = Notification.objects.get(recipient=self.kid, notification_type='reward_approved')
         self.assertTrue(note.deliver_in_app)
-        self.assertEqual(note.email_status, 'queued')
+        # Kid prefers 'both' and has an email, so it should actually be sent.
+        self.assertEqual(note.email_status, 'sent')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.kid.email, mail.outbox[0].to)
 
     def test_reward_denial_respects_none_notification_preference(self):
         self.kid.notification_preference = 'none'
@@ -209,3 +213,82 @@ class RewardNotificationTests(TestCase):
         self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'deny']))
 
         self.assertFalse(Notification.objects.filter(recipient=self.kid).exists())
+
+    def test_overspent_redemption_is_blocked_without_deducting(self):
+        # Kid requested while affordable, then points dropped before parent approval.
+        self.kid.points = 50
+        self.kid.save()
+        redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)  # cost 25
+        self.kid.points = 10
+        self.kid.save()
+
+        self.client.force_login(self.parent)
+        self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+
+        self.kid.refresh_from_db()
+        redemption.refresh_from_db()
+        self.assertEqual(self.kid.points, 10)            # nothing deducted
+        self.assertEqual(redemption.status, 'pending')   # still pending
+
+
+class FamilyCodeTests(TestCase):
+    def _register(self, **extra):
+        data = {
+            'username': 'dad', 'first_name': 'Dad', 'last_name': 'X',
+            'email': 'dad@example.com', 'avatar_color': '#6C63FF',
+            'password': 'pass12345', 'confirm_password': 'pass12345',
+        }
+        data.update(extra)
+        return self.client.post(reverse('register'), data)
+
+    def setUp(self):
+        self.mom = CustomUser.objects.create_user(username='mom', password='pass12345', is_parent=True)
+        self.kid = CustomUser.objects.create_user(
+            username='eva', password='pass12345', is_kid=True, parent_account=self.mom,
+        )
+
+    def test_every_user_gets_a_unique_family_code(self):
+        self.assertEqual(len(self.mom.family_code), 6)
+        self.assertNotEqual(self.mom.family_code, self.kid.family_code)
+
+    def test_family_join_code_is_always_the_head_code(self):
+        # Kid's shareable code resolves to the head parent's code.
+        self.assertEqual(self.kid.family_join_code, self.mom.family_code)
+
+    def test_partner_joins_existing_family_via_code(self):
+        resp = self._register(join_family_code=self.mom.family_code.lower())  # case-insensitive
+        self.assertRedirects(resp, reverse('dashboard'), fetch_redirect_response=False)
+        dad = CustomUser.objects.get(username='dad')
+        self.assertTrue(dad.is_parent)
+        self.assertEqual(dad.parent_account_id, self.mom.id)
+        self.assertEqual(dad.family_join_code, self.mom.family_code)
+        # Co-parent sees the family's existing kid.
+        self.assertIn(self.kid, list(dad.family_kids()))
+
+    def test_invalid_family_code_is_rejected(self):
+        resp = self._register(join_family_code='ZZZZZZ')
+        self.assertEqual(resp.status_code, 200)  # re-rendered with error
+        self.assertFalse(CustomUser.objects.filter(username='dad').exists())
+
+    def test_blank_code_starts_a_new_family(self):
+        resp = self._register()
+        self.assertRedirects(resp, reverse('dashboard'), fetch_redirect_response=False)
+        dad = CustomUser.objects.get(username='dad')
+        self.assertIsNone(dad.parent_account_id)
+        self.assertEqual(dad.family_head, dad)
+
+    def test_coparent_can_review_task_created_by_other_parent(self):
+        dad = CustomUser.objects.create_user(
+            username='dad', password='pass12345', is_parent=True, parent_account=self.mom,
+        )
+        task = Task.objects.create(
+            title='Dishes', parent=self.mom, assigned_to=self.kid,
+            points_value=10, status='submitted', submitted_at=timezone.now(),
+        )
+        self.client.force_login(dad)
+        resp = self.client.post(reverse('task_review', args=[task.pk]), {
+            'action': 'approve', 'points_earned': 10, 'parent_feedback': 'great',
+        })
+        self.assertRedirects(resp, reverse('parent_dashboard'))
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.points, 10)

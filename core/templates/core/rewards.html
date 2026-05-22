@@ -40,7 +40,7 @@
       {% elif reward.points_cost <= kid_points %}
         <a href="{% url 'reward_redeem' reward.pk %}" class="btn btn-primary btn-sm">Redeem!</a>
       {% else %}
-        <div class="reward-need-more">{{ reward.points_cost|add:"-"|add:kid_points }} pts to go</div>
+        <div class="reward-need-more">{{ reward.points_needed }} pt{{ reward.points_needed|pluralize }} to go</div>
       {% endif %}
     </div>
     {% endfor %}

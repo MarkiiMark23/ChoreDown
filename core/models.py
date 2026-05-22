@@ -1,8 +1,19 @@
+import secrets
+import string as _string
+
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+
+FAMILY_CODE_LENGTH = 6
+# Excludes easily-confused characters (0/O, 1/I) so codes are easy to read aloud.
+FAMILY_CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+
+
+def generate_family_code():
+    return ''.join(secrets.choice(FAMILY_CODE_ALPHABET) for _ in range(FAMILY_CODE_LENGTH))
 
 
 class CustomUser(AbstractUser):
@@ -53,6 +64,15 @@ class CustomUser(AbstractUser):
     household_timezone = models.CharField(max_length=64, blank=True)
     feedback_preferences = models.TextField(blank=True)
     default_approval_note = models.TextField(blank=True)
+    family_code = models.CharField(max_length=FAMILY_CODE_LENGTH, unique=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.family_code:
+            code = generate_family_code()
+            while CustomUser.objects.filter(family_code=code).exists():
+                code = generate_family_code()
+            self.family_code = code
+        super().save(*args, **kwargs)
 
     def clean(self):
         if self.is_parent and self.is_kid:
@@ -63,6 +83,29 @@ class CustomUser(AbstractUser):
 
     def is_kid_user(self):
         return self.is_kid
+
+    @property
+    def family_head(self):
+        """The primary parent of this user's family (self if there's no parent_account)."""
+        return self.parent_account if self.parent_account_id else self
+
+    @property
+    def family_join_code(self):
+        """The single shareable code for the whole family (always the head's)."""
+        return self.family_head.family_code
+
+    def family_parent_ids(self):
+        """IDs of every parent in this family (the head plus any co-parents who joined)."""
+        head = self.family_head
+        ids = {head.id}
+        ids.update(
+            head.children.filter(is_parent=True).values_list('id', flat=True)
+        )
+        return ids
+
+    def family_kids(self):
+        """All kids belonging to this user's family, regardless of which parent added them."""
+        return CustomUser.objects.filter(parent_account=self.family_head, is_kid=True)
 
     def __str__(self):
         role = 'Parent' if self.is_parent else 'Kid'

@@ -100,7 +100,23 @@ TASK_PRESETS = {
         'points': 12,
         'description': 'Pajamas, teeth, bathroom, and clothes ready for tomorrow.',
     },
+    'outdoor_time': {
+        'label': 'Outside time',
+        'title': 'Play or help outside',
+        'category': 'outdoor',
+        'points': 10,
+        'description': 'Yard work, a walk, or some active outdoor play.',
+    },
 }
+
+# A short curated list keeps the dropdown usable; the middleware safely ignores bad values.
+COMMON_TIMEZONES = [
+    'America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix',
+    'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu',
+    'America/Toronto', 'America/Mexico_City', 'Europe/London', 'Europe/Paris',
+    'Europe/Berlin', 'Australia/Sydney', 'UTC',
+]
+TIMEZONE_CHOICES = [('', 'Use UTC (default)')] + [(tz, tz.replace('_', ' ')) for tz in COMMON_TIMEZONES]
 
 REWARD_PRESETS = {
     'screen_time': ('Extra screen time', '1 extra hour of screen time.', 30, '📱'),
@@ -132,6 +148,17 @@ class ParentRegistrationForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Password'}))
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={'placeholder': 'Confirm Password'}))
     avatar_color = forms.ChoiceField(choices=AVATAR_COLORS, widget=forms.RadioSelect)
+    join_family_code = forms.CharField(
+        required=False,
+        label="Family code",
+        widget=forms.TextInput(attrs={
+            'placeholder': 'e.g. 7K2QPD',
+            'maxlength': 6,
+            'autocapitalize': 'characters',
+            'autocomplete': 'off',
+            'style': 'text-transform:uppercase',
+        }),
+    )
 
     class Meta:
         model = CustomUser
@@ -143,6 +170,16 @@ class ParentRegistrationForm(forms.ModelForm):
             'email': forms.EmailInput(attrs={'placeholder': 'Email'}),
         }
 
+    def clean_join_family_code(self):
+        code = (self.cleaned_data.get('join_family_code') or '').strip().upper()
+        if not code:
+            return ''
+        if not CustomUser.objects.filter(family_code=code).exists():
+            raise forms.ValidationError(
+                "We couldn't find a family with that code. Double-check it with whoever invited you."
+            )
+        return code
+
     def clean(self):
         cleaned = super().clean()
         if cleaned.get('password') != cleaned.get('confirm_password'):
@@ -153,6 +190,10 @@ class ParentRegistrationForm(forms.ModelForm):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password'])
         user.is_parent = True
+        join_code = self.cleaned_data.get('join_family_code')
+        if join_code:
+            target = CustomUser.objects.get(family_code=join_code)
+            user.parent_account = target.family_head
         if commit:
             user.save()
         return user
@@ -204,7 +245,7 @@ class TaskCreateForm(forms.ModelForm):
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        kids = parent.children.filter(is_kid=True)
+        kids = parent.family_kids()
         self.fields['assigned_to'].queryset = kids
         self.fields['assigned_to'].empty_label = "Select a kid"
         if kids.count() == 1 and not self.is_bound:
@@ -238,7 +279,7 @@ class BehaviorLogForm(forms.ModelForm):
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['associated_with'].queryset = parent.children.filter(is_kid=True)
+        self.fields['associated_with'].queryset = parent.family_kids()
         self.fields['associated_with'].empty_label = "Select a kid"
 
     def clean(self):
@@ -312,6 +353,9 @@ class TaskReviewForm(forms.ModelForm):
 
 class ProfileForm(forms.ModelForm):
     avatar_color = forms.ChoiceField(choices=AVATAR_COLORS, widget=forms.RadioSelect)
+    household_timezone = forms.ChoiceField(
+        choices=TIMEZONE_CHOICES, required=False, label='Household timezone',
+    )
 
     class Meta:
         model = CustomUser
