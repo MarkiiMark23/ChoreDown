@@ -1,7 +1,10 @@
+import threading
 from datetime import timedelta
+from unittest import skipUnless
 
 from django.core import mail
-from django.test import TestCase
+from django.db import connection, connections
+from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -296,6 +299,53 @@ class PageRenderSmokeTests(TestCase):
         for name in ['home', 'login', 'register']:
             with self.subTest(page=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+
+@skipUnless(
+    connection.vendor == 'postgresql',
+    "SELECT ... FOR UPDATE row locking is only enforced on Postgres; skipped on SQLite.",
+)
+class RedemptionConcurrencyTests(TransactionTestCase):
+    """Two parents (or two clicks) approving at the same moment must not let a
+    kid spend points they don't have. Verified in CI against real Postgres."""
+
+    def test_two_concurrent_approvals_cannot_overdraw(self):
+        parent = CustomUser.objects.create_user(username='cpar', password='pass12345', is_parent=True)
+        kid = CustomUser.objects.create_user(
+            username='ckid', password='pass12345', is_kid=True,
+            parent_account=parent, points=30, notification_preference='none',
+        )
+        red1 = RewardRedemption.objects.create(
+            kid=kid, reward=Reward.objects.create(title='A', points_cost=20, parent=parent),
+        )
+        red2 = RewardRedemption.objects.create(
+            kid=kid, reward=Reward.objects.create(title='B', points_cost=20, parent=parent),
+        )
+
+        barrier = threading.Barrier(2)
+
+        def approve(redemption_pk):
+            barrier.wait()  # release both threads at the same instant
+            try:
+                client = Client()
+                client.force_login(parent)
+                client.post(reverse('redemption_resolve', args=[redemption_pk, 'approve']))
+            finally:
+                connections.close_all()
+
+        threads = [threading.Thread(target=approve, args=[r.pk]) for r in (red1, red2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        kid.refresh_from_db()
+        approved = RewardRedemption.objects.filter(kid=kid, status='approved').count()
+        ledger = sum(t.amount for t in PointTransaction.objects.filter(user=kid))
+        self.assertEqual(approved, 1)              # only one reward was affordable
+        self.assertEqual(kid.points, 10)           # 30 - 20, never overdrawn
+        self.assertEqual(ledger, -20)              # exactly one deduction recorded
+        self.assertEqual(kid.points, 30 + ledger)  # balance reconciles to the ledger
 
 
 class PointLedgerTests(TestCase):

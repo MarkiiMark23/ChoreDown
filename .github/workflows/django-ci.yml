@@ -7,10 +7,28 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Run the suite against Postgres (the production engine) so Postgres-only
+    # behaviour like SELECT ... FOR UPDATE row locking is actually exercised.
+    # This is an ephemeral container on GitHub's runner — nothing is installed
+    # on any of your own machines.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: choredown_db
+          POSTGRES_USER: choredown_user
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       SECRET_KEY: ci-not-a-real-secret
       DEBUG: "False"
-      DATABASE_URL: "sqlite:///ci.sqlite3"
+      DATABASE_URL: "postgres://choredown_user:ci-password@localhost:5432/choredown_db"
       ALLOWED_HOSTS: "localhost,127.0.0.1,testserver"
     steps:
       - uses: actions/checkout@v4

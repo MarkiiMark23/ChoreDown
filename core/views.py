@@ -602,17 +602,20 @@ def redemption_resolve_view(request, pk, action):
     )
     if action not in ('approve', 'deny'):
         return redirect('redemption_list')
-    if action == 'approve':
-        redemption.kid.refresh_from_db(fields=['points'])
-        if redemption.kid.points < redemption.reward.points_cost:
-            kid_name = redemption.kid.first_name or redemption.kid.username
-            messages.error(
-                request,
-                f"{kid_name} no longer has enough points for '{redemption.reward.title}' "
-                f"({redemption.kid.points}/{redemption.reward.points_cost}). Nothing was deducted.",
-            )
-            return redirect('redemption_list')
     with db_transaction.atomic():
+        if action == 'approve':
+            # Lock the kid's row and re-check affordability *inside* the lock, so
+            # two parents (or two clicks) approving at once can't both spend the
+            # same points and overdraw the balance.
+            kid = CustomUser.objects.select_for_update().get(pk=redemption.kid_id)
+            if kid.points < redemption.reward.points_cost:
+                kid_name = kid.first_name or kid.username
+                messages.error(
+                    request,
+                    f"{kid_name} no longer has enough points for '{redemption.reward.title}' "
+                    f"({kid.points}/{redemption.reward.points_cost}). Nothing was deducted.",
+                )
+                return redirect('redemption_list')
         redemption.status = 'approved' if action == 'approve' else 'denied'
         redemption.resolved_at = timezone.now()
         redemption.resolved_by = request.user
