@@ -138,7 +138,10 @@ def login_view(request):
 
 
 def logout_view(request):
-    logout(request)
+    # POST-only so a stray GET (image tag, prefetch, mistyped link) can't log
+    # someone out. The Sign Out control submits a small CSRF-protected form.
+    if request.method == 'POST':
+        logout(request)
     return redirect('login')
 
 
@@ -475,6 +478,30 @@ def behavior_list_view(request):
         associated_with__in=request.user.family_kids()
     ).select_related('associated_with').order_by('-date_logged')
     return render(request, 'core/behaviors.html', {'behaviors': behaviors})
+
+
+@login_required
+def behavior_undo_view(request, pk):
+    """Reverse an accidentally-logged behavior: undo its point change and remove
+    it from the log. The original and reversing transactions both stay in point
+    history so the ledger remains an honest, reconciling record."""
+    if not request.user.is_parent:
+        return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('behavior_list')
+    behavior = get_object_or_404(
+        Behavior, pk=pk, associated_with__in=request.user.family_kids()
+    )
+    kid = behavior.associated_with
+    if behavior.behavior_type == 'positive':
+        reverse_amount, tx_type = -behavior.points_value, 'penalty'
+    else:
+        reverse_amount, tx_type = behavior.points_value, 'bonus'
+    with db_transaction.atomic():
+        _award_points(kid, reverse_amount, tx_type, f"Undid behavior: {behavior.description}")
+        behavior.delete()
+    messages.success(request, f"Reversed that behavior for {kid.first_name or kid.username}.")
+    return redirect('behavior_list')
 
 
 @login_required

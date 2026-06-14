@@ -8,7 +8,7 @@ from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import CustomUser, Notification, PointTransaction, Reward, RewardRedemption, Task
+from .models import Behavior, CustomUser, Notification, PointTransaction, Reward, RewardRedemption, Task
 
 
 class TaskReviewWorkflowTests(TestCase):
@@ -246,6 +246,89 @@ class RewardNotificationTests(TestCase):
         redemption.refresh_from_db()
         self.assertEqual(self.kid.points, 10)            # nothing deducted
         self.assertEqual(redemption.status, 'pending')   # still pending
+
+
+class LogoutTests(TestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            username='outparent', password='pass12345', is_parent=True,
+        )
+
+    def test_get_does_not_log_out(self):
+        self.client.force_login(self.user)
+        self.client.get(reverse('logout'))
+        # Still authenticated: a protected page renders instead of redirecting to login.
+        self.assertEqual(self.client.get(reverse('parent_dashboard')).status_code, 200)
+
+    def test_post_logs_out(self):
+        self.client.force_login(self.user)
+        resp = self.client.post(reverse('logout'))
+        self.assertRedirects(resp, reverse('login'))
+        # Now anonymous: protected page redirects to login.
+        self.assertEqual(self.client.get(reverse('parent_dashboard')).status_code, 302)
+
+
+class BehaviorUndoTests(TestCase):
+    def setUp(self):
+        self.parent = CustomUser.objects.create_user(
+            username='bparent', password='pass12345', is_parent=True,
+        )
+        self.kid = CustomUser.objects.create_user(
+            username='bkid', password='pass12345', is_kid=True,
+            parent_account=self.parent, points=20, notification_preference='none',
+        )
+
+    def _ledger(self, user):
+        return sum(t.amount for t in PointTransaction.objects.filter(user=user))
+
+    def test_undo_positive_behavior_reverses_points_and_removes_entry(self):
+        self.client.force_login(self.parent)
+        self.client.post(reverse('behavior_log'), {
+            'associated_with': self.kid.id, 'behavior_type': 'positive',
+            'description': 'Helped', 'points_value': 10, 'preset': '',
+        })
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.points, 30)
+        behavior = Behavior.objects.get(associated_with=self.kid)
+
+        self.client.post(reverse('behavior_undo', args=[behavior.pk]))
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.points, 20)                    # back to start
+        self.assertFalse(Behavior.objects.filter(pk=behavior.pk).exists())
+        self.assertEqual(self._ledger(self.kid), 0)              # +10 then -10 nets to zero
+
+    def test_undo_negative_behavior_restores_points(self):
+        self.client.force_login(self.parent)
+        self.client.post(reverse('behavior_log'), {
+            'associated_with': self.kid.id, 'behavior_type': 'negative',
+            'description': 'Rough moment', 'points_value': 8, 'preset': '',
+        })
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.points, 12)
+        behavior = Behavior.objects.get(associated_with=self.kid)
+
+        self.client.post(reverse('behavior_undo', args=[behavior.pk]))
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.points, 20)
+
+    def test_undo_ignores_get(self):
+        behavior = Behavior.objects.create(
+            associated_with=self.kid, logged_by=self.parent,
+            behavior_type='positive', description='x', points_value=5,
+        )
+        self.client.force_login(self.parent)
+        self.client.get(reverse('behavior_undo', args=[behavior.pk]))
+        self.assertTrue(Behavior.objects.filter(pk=behavior.pk).exists())
+
+    def test_cannot_undo_other_familys_behavior(self):
+        other_parent = CustomUser.objects.create_user(username='op', password='pass12345', is_parent=True)
+        behavior = Behavior.objects.create(
+            associated_with=self.kid, logged_by=self.parent,
+            behavior_type='positive', description='x', points_value=5,
+        )
+        self.client.force_login(other_parent)
+        resp = self.client.post(reverse('behavior_undo', args=[behavior.pk]))
+        self.assertEqual(resp.status_code, 404)
 
 
 class PageRenderSmokeTests(TestCase):

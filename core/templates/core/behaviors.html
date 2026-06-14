@@ -18,6 +18,12 @@
     <div class="behavior-pts {% if b.behavior_type == 'positive' %}pts-positive{% else %}pts-negative{% endif %}">
       {% if b.behavior_type == 'positive' %}+{% else %}−{% endif %}{{ b.points_value }}
     </div>
+    <form method="post" action="{% url 'behavior_undo' b.pk %}"
+          onsubmit="return confirm('Undo this behavior and reverse the points?')"
+          style="margin-left:.5rem">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-outline" title="Undo this entry">Undo</button>
+    </form>
   </div>
   {% endfor %}
 {% else %}

@@ -143,7 +143,11 @@ pip install -r requirements.txt
 python manage.py migrate            # never skip
 python manage.py collectstatic --noinput
 sudo systemctl restart choredown
+./scripts/post_deploy_check.sh      # verifies config, migrations, static, and that the app answers
 ```
+
+The smoke test catches the usual deploy breakage (missing migrations, app not
+running) in one command. Add `--with-tests` to also run the full suite first.
 
 ## 9. Turning on HTTPS later
 

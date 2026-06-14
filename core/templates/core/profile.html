@@ -196,7 +196,10 @@
 {% endif %}
 
 <div class="section" style="margin-top:2rem">
-  <a href="{% url 'logout' %}" class="btn btn-outline btn-full" style="color:#F44336;border-color:#F44336">Sign Out</a>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline btn-full" style="color:#F44336;border-color:#F44336">Sign Out</button>
+  </form>
 </div>
 {% endblock %}
 

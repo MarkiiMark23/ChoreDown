@@ -20,6 +20,7 @@ urlpatterns = [
 
     path('behaviors/', views.behavior_list_view, name='behavior_list'),
     path('behaviors/log/', views.behavior_log_view, name='behavior_log'),
+    path('behaviors/<int:pk>/undo/', views.behavior_undo_view, name='behavior_undo'),
 
     path('rewards/', views.reward_list_view, name='reward_list'),
     path('rewards/create/', views.reward_create_view, name='reward_create'),
