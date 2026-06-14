@@ -396,6 +396,90 @@ class FamilyCodeTests(TestCase):
         self.assertEqual(self.kid.points, 10)
 
 
+class FullLifecycleIntegrationTests(TestCase):
+    """Drive the whole product through the real web views, end to end, and prove
+    the point ledger reconciles to the displayed balance at every step."""
+
+    def _ledger(self, user):
+        return sum(t.amount for t in PointTransaction.objects.filter(user=user))
+
+    def test_register_assign_complete_approve_redeem_resolve(self):
+        # 1. Parent self-registers (strong password required).
+        resp = self.client.post(reverse('register'), {
+            'username': 'momqa', 'first_name': 'Mom', 'last_name': 'Q',
+            'email': 'momqa@example.com', 'avatar_color': '#6C63FF',
+            'password': 'Tr0ub4dour!', 'confirm_password': 'Tr0ub4dour!',
+        })
+        self.assertRedirects(resp, reverse('dashboard'), fetch_redirect_response=False)
+        parent = CustomUser.objects.get(username='momqa')
+        self.assertTrue(parent.is_parent)
+
+        # 2. Parent adds a kid (simple password allowed).
+        resp = self.client.post(reverse('add_kid'), {
+            'username': 'kidqa', 'first_name': 'Kid', 'avatar_color': '#4CAF50', 'password': '1234',
+        })
+        self.assertRedirects(resp, reverse('parent_dashboard'))
+        kid = CustomUser.objects.get(username='kidqa')
+        self.assertEqual(kid.parent_account_id, parent.id)
+
+        # 3. Parent assigns a task.
+        resp = self.client.post(reverse('task_create'), {
+            'title': 'Dishes', 'description': '', 'assigned_to': kid.id,
+            'category': 'chores', 'priority': 2, 'points_value': 20, 'preset': '',
+        })
+        self.assertRedirects(resp, reverse('task_list'))
+        task = Task.objects.get(assigned_to=kid, title='Dishes')
+        self.assertEqual(task.status, 'assigned')
+
+        # 4. Kid logs in and submits the task.
+        self.client.force_login(kid)
+        resp = self.client.post(reverse('task_complete', args=[task.pk]), {
+            'fun_rating': 4, 'effort_note': 'done',
+        })
+        self.assertRedirects(resp, reverse('kid_dashboard'))
+        task.refresh_from_db()
+        kid.refresh_from_db()
+        self.assertEqual(task.status, 'submitted')
+        self.assertEqual(kid.points, 0)  # not awarded until parent approves
+
+        # 5. Parent approves with full points.
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('task_review', args=[task.pk]), {
+            'action': 'approve', 'points_earned': 20, 'parent_feedback': 'great',
+        })
+        self.assertRedirects(resp, reverse('parent_dashboard'))
+        kid.refresh_from_db()
+        self.assertEqual(kid.points, 20)
+        self.assertEqual(self._ledger(kid), 20)  # ledger == balance
+
+        # 6. Parent creates a reward the kid can afford.
+        resp = self.client.post(reverse('reward_create'), {
+            'title': 'Movie night', 'description': '', 'points_cost': 15,
+            'icon': '🎬', 'is_active': 'on', 'preset': '',
+        })
+        self.assertRedirects(resp, reverse('reward_list'))
+        reward = Reward.objects.get(parent=parent, title='Movie night')
+
+        # 7. Kid redeems it (POST confirm).
+        self.client.force_login(kid)
+        resp = self.client.post(reverse('reward_redeem', args=[reward.pk]))
+        self.assertRedirects(resp, reverse('kid_dashboard'))
+        redemption = RewardRedemption.objects.get(kid=kid, reward=reward)
+        self.assertEqual(redemption.status, 'pending')
+        kid.refresh_from_db()
+        self.assertEqual(kid.points, 20)  # nothing deducted until parent approves
+
+        # 8. Parent approves the redemption (POST only).
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+        self.assertRedirects(resp, reverse('redemption_list'))
+        redemption.refresh_from_db()
+        kid.refresh_from_db()
+        self.assertEqual(redemption.status, 'approved')
+        self.assertEqual(kid.points, 5)            # 20 earned - 15 spent
+        self.assertEqual(self._ledger(kid), 5)     # ledger still reconciles
+
+
 class RegistrationValidationTests(TestCase):
     def _register(self, **extra):
         data = {
