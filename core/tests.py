@@ -231,6 +231,41 @@ class RewardNotificationTests(TestCase):
         self.assertEqual(redemption.status, 'pending')   # still pending
 
 
+class PointLedgerTests(TestCase):
+    def setUp(self):
+        self.parent = CustomUser.objects.create_user(
+            username='parent', password='pass12345', is_parent=True,
+        )
+        self.kid = CustomUser.objects.create_user(
+            username='kid', password='pass12345', is_kid=True,
+            parent_account=self.parent, notification_preference='none',
+        )
+
+    def test_penalty_below_zero_keeps_ledger_matching_balance(self):
+        from .views import _award_points
+
+        # Earn 5, then take a 10-point penalty: balance floors at 0, and the
+        # ledger records only what was actually applied (-5), so the running
+        # total a kid sees in their history still sums back to their balance.
+        _award_points(self.kid, 5, 'behavior_positive', 'Tidied up')
+        _award_points(self.kid, -10, 'penalty', 'Broke a window')
+
+        self.kid.refresh_from_db()
+        ledger = sum(t.amount for t in PointTransaction.objects.filter(user=self.kid))
+        self.assertEqual(self.kid.points, 0)
+        self.assertEqual(ledger, 0)
+        self.assertEqual(self.kid.points, ledger)
+
+    def test_normal_award_records_full_amount(self):
+        from .views import _award_points
+
+        _award_points(self.kid, 8, 'behavior_positive', 'Helped with dishes')
+
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.points, 8)
+        self.assertEqual(PointTransaction.objects.get(user=self.kid).amount, 8)
+
+
 class FamilyCodeTests(TestCase):
     def _register(self, **extra):
         data = {

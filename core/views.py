@@ -37,13 +37,20 @@ from .forms import (
 # ---------------------------------------------------------------------------
 
 def _award_points(user, amount, transaction_type, description):
-    """Add or subtract points and record the transaction."""
+    """Add or subtract points and record the transaction.
+
+    The balance is floored at 0 so kids never see a negative score. We record
+    the amount *actually* applied (after clamping), not the requested amount, so
+    the point-history ledger always sums back to the displayed balance.
+    """
     user.refresh_from_db(fields=['points'])
-    user.points = max(0, user.points + amount)
+    new_total = max(0, user.points + amount)
+    applied = new_total - user.points
+    user.points = new_total
     user.save(update_fields=['points'])
     PointTransaction.objects.create(
         user=user,
-        amount=amount,
+        amount=applied,
         transaction_type=transaction_type,
         description=description,
     )
