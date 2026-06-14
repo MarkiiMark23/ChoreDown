@@ -17,6 +17,8 @@ urlpatterns = [
     path('tasks/create/', views.task_create_view, name='task_create'),
     path('tasks/<int:pk>/complete/', views.task_complete_view, name='task_complete'),
     path('tasks/<int:pk>/review/', views.task_review_view, name='task_review'),
+    path('tasks/<int:pk>/edit/', views.task_edit_view, name='task_edit'),
+    path('tasks/<int:pk>/delete/', views.task_delete_view, name='task_delete'),
 
     path('behaviors/', views.behavior_list_view, name='behavior_list'),
     path('behaviors/log/', views.behavior_log_view, name='behavior_log'),
@@ -24,6 +26,9 @@ urlpatterns = [
 
     path('rewards/', views.reward_list_view, name='reward_list'),
     path('rewards/create/', views.reward_create_view, name='reward_create'),
+    path('rewards/<int:pk>/edit/', views.reward_edit_view, name='reward_edit'),
+    path('rewards/<int:pk>/toggle/', views.reward_toggle_view, name='reward_toggle'),
+    path('rewards/<int:pk>/delete/', views.reward_delete_view, name='reward_delete'),
     path('rewards/<int:pk>/redeem/', views.reward_redeem_view, name='reward_redeem'),
 
     path('redemptions/', views.redemption_list_view, name='redemption_list'),

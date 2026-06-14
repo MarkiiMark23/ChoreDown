@@ -466,6 +466,32 @@ def task_review_view(request, pk):
     })
 
 
+@login_required
+def task_edit_view(request, pk):
+    if not request.user.is_parent:
+        return redirect('dashboard')
+    task = get_object_or_404(Task, pk=pk, parent=request.user.family_head)
+    form = TaskCreateForm(request.user, request.POST or None, instance=task)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f"Updated '{task.title}'.")
+        return redirect('task_list')
+    return render(request, 'core/task_create.html', {'form': form, 'editing': True, 'task': task})
+
+
+@login_required
+def task_delete_view(request, pk):
+    if not request.user.is_parent:
+        return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('task_list')
+    task = get_object_or_404(Task, pk=pk, parent=request.user.family_head)
+    title = task.title
+    task.delete()
+    messages.success(request, f"Deleted '{title}'.")
+    return redirect('task_list')
+
+
 # ---------------------------------------------------------------------------
 # Behavior views
 # ---------------------------------------------------------------------------
@@ -597,6 +623,48 @@ def reward_redeem_view(request, pk):
         messages.success(request, f"Redemption request sent to your parent!")
         return redirect('kid_dashboard')
     return render(request, 'core/reward_redeem_confirm.html', {'reward': reward})
+
+
+@login_required
+def reward_edit_view(request, pk):
+    if not request.user.is_parent:
+        return redirect('dashboard')
+    reward = get_object_or_404(Reward, pk=pk, parent=request.user.family_head)
+    form = RewardCreateForm(request.POST or None, instance=reward)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f"Updated '{reward.title}'.")
+        return redirect('reward_list')
+    return render(request, 'core/reward_create.html', {'form': form, 'editing': True, 'reward': reward})
+
+
+@login_required
+def reward_toggle_view(request, pk):
+    if not request.user.is_parent:
+        return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('reward_list')
+    reward = get_object_or_404(Reward, pk=pk, parent=request.user.family_head)
+    reward.is_active = not reward.is_active
+    reward.save(update_fields=['is_active'])
+    messages.success(
+        request,
+        f"'{reward.title}' is now {'active' if reward.is_active else 'hidden from kids'}.",
+    )
+    return redirect('reward_list')
+
+
+@login_required
+def reward_delete_view(request, pk):
+    if not request.user.is_parent:
+        return redirect('dashboard')
+    if request.method != 'POST':
+        return redirect('reward_list')
+    reward = get_object_or_404(Reward, pk=pk, parent=request.user.family_head)
+    title = reward.title
+    reward.delete()
+    messages.success(request, f"Deleted '{title}'.")
+    return redirect('reward_list')
 
 
 # ---------------------------------------------------------------------------

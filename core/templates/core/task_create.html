@@ -1,9 +1,9 @@
 {% extends 'core/base.html' %}
-{% block title %}New Task — {{ APP_NAME }}{% endblock %}
+{% block title %}{% if editing %}Edit Task{% else %}New Task{% endif %} — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <a href="{% url 'task_list' %}" class="back-btn">← Back</a>
-  <h1 class="page-title">New Task</h1>
+  <h1 class="page-title">{% if editing %}Edit Task{% else %}New Task{% endif %}</h1>
 </div>
 
 <div class="form-card">
@@ -79,7 +79,7 @@
       {% endfor %}
     </div>
     {% endif %}
-    <button type="submit" class="btn btn-primary btn-full">Assign Task</button>
+    <button type="submit" class="btn btn-primary btn-full">{% if editing %}Save Changes{% else %}Assign Task{% endif %}</button>
   </form>
 </div>
 {% endblock %}

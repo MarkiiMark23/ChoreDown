@@ -77,6 +77,15 @@
           <span class="badge badge-grey">Assigned</span>
           {% endif %}
         {% endif %}
+        {% if user.is_parent %}
+        <span class="task-admin-actions">
+          <a href="{% url 'task_edit' task.pk %}" class="btn btn-outline btn-sm">Edit</a>
+          <form method="post" action="{% url 'task_delete' task.pk %}" onsubmit="return confirm('Delete “{{ task.title|escapejs }}”? This can’t be undone.')" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Delete</button>
+          </form>
+        </span>
+        {% endif %}
       </div>
     </div>
     {% endfor %}

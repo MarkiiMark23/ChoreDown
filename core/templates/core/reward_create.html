@@ -1,9 +1,9 @@
 {% extends 'core/base.html' %}
-{% block title %}New Reward — {{ APP_NAME }}{% endblock %}
+{% block title %}{% if editing %}Edit Reward{% else %}New Reward{% endif %} — {{ APP_NAME }}{% endblock %}
 {% block content %}
 <div class="page-header">
   <a href="{% url 'reward_list' %}" class="back-btn">← Back</a>
-  <h1 class="page-title">New Reward</h1>
+  <h1 class="page-title">{% if editing %}Edit Reward{% else %}New Reward{% endif %}</h1>
 </div>
 
 <div class="form-card">
@@ -31,7 +31,7 @@
       <div class="icon-picker">
         {% for value, label in form.icon.field.choices %}
         <label class="icon-option">
-          <input type="radio" name="icon" value="{{ value }}" {% if forloop.first %}checked{% endif %}>
+          <input type="radio" name="icon" value="{{ value }}" {% if form.icon.value == value %}checked{% elif not form.icon.value and forloop.first %}checked{% endif %}>
           <span class="icon-emoji" title="{{ label }}">{{ value }}</span>
         </label>
         {% endfor %}

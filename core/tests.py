@@ -331,6 +331,81 @@ class BehaviorUndoTests(TestCase):
         self.assertEqual(resp.status_code, 404)
 
 
+class TaskRewardManagementTests(TestCase):
+    def setUp(self):
+        self.parent = CustomUser.objects.create_user(
+            username='mparent', password='pass12345', is_parent=True,
+        )
+        self.kid = CustomUser.objects.create_user(
+            username='mkid', password='pass12345', is_kid=True, parent_account=self.parent,
+        )
+        self.task = Task.objects.create(
+            title='Old title', points_value=10, parent=self.parent, assigned_to=self.kid,
+        )
+        self.reward = Reward.objects.create(
+            title='Treat', points_cost=20, parent=self.parent, is_active=True,
+        )
+
+    def test_parent_can_edit_task(self):
+        self.client.force_login(self.parent)
+        resp = self.client.post(reverse('task_edit', args=[self.task.pk]), {
+            'title': 'New title', 'description': '', 'assigned_to': self.kid.id,
+            'category': 'chores', 'priority': 2, 'points_value': 25, 'preset': '',
+        })
+        self.assertRedirects(resp, reverse('task_list'))
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.title, 'New title')
+        self.assertEqual(self.task.points_value, 25)
+
+    def test_parent_can_delete_task_post_only(self):
+        self.client.force_login(self.parent)
+        # GET must not delete
+        self.client.get(reverse('task_delete', args=[self.task.pk]))
+        self.assertTrue(Task.objects.filter(pk=self.task.pk).exists())
+        # POST deletes
+        resp = self.client.post(reverse('task_delete', args=[self.task.pk]))
+        self.assertRedirects(resp, reverse('task_list'))
+        self.assertFalse(Task.objects.filter(pk=self.task.pk).exists())
+
+    def test_cannot_delete_other_familys_task(self):
+        other = CustomUser.objects.create_user(username='ofp', password='pass12345', is_parent=True)
+        self.client.force_login(other)
+        resp = self.client.post(reverse('task_delete', args=[self.task.pk]))
+        self.assertEqual(resp.status_code, 404)
+        self.assertTrue(Task.objects.filter(pk=self.task.pk).exists())
+
+    def test_parent_can_toggle_and_edit_and_delete_reward(self):
+        self.client.force_login(self.parent)
+        # toggle (hide)
+        self.client.post(reverse('reward_toggle', args=[self.reward.pk]))
+        self.reward.refresh_from_db()
+        self.assertFalse(self.reward.is_active)
+        # edit
+        self.client.post(reverse('reward_edit', args=[self.reward.pk]), {
+            'title': 'Bigger treat', 'description': '', 'points_cost': 40,
+            'icon': '🎁', 'is_active': 'on', 'preset': '',
+        })
+        self.reward.refresh_from_db()
+        self.assertEqual(self.reward.title, 'Bigger treat')
+        self.assertEqual(self.reward.points_cost, 40)
+        # delete
+        resp = self.client.post(reverse('reward_delete', args=[self.reward.pk]))
+        self.assertRedirects(resp, reverse('reward_list'))
+        self.assertFalse(Reward.objects.filter(pk=self.reward.pk).exists())
+
+    def test_cannot_manage_other_familys_reward(self):
+        other = CustomUser.objects.create_user(username='ofp2', password='pass12345', is_parent=True)
+        self.client.force_login(other)
+        self.assertEqual(self.client.post(reverse('reward_delete', args=[self.reward.pk])).status_code, 404)
+        self.assertEqual(self.client.post(reverse('reward_toggle', args=[self.reward.pk])).status_code, 404)
+
+    def test_kid_cannot_delete_task(self):
+        self.client.force_login(self.kid)
+        resp = self.client.post(reverse('task_delete', args=[self.task.pk]))
+        self.assertRedirects(resp, reverse('dashboard'), target_status_code=302)
+        self.assertTrue(Task.objects.filter(pk=self.task.pk).exists())
+
+
 class PageRenderSmokeTests(TestCase):
     """Render every main page as a parent and a kid to catch template/url errors."""
 

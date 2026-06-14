@@ -10,15 +10,26 @@
   <div class="rewards-grid">
     {% for reward in rewards %}
     <div class="reward-card {% if not reward.is_active %}reward-card--inactive{% endif %}">
-      <a class="reward-card-icon" href="{% url 'reward_list' %}" title="Reward details">{{ reward.icon }}</a>
+      <div class="reward-card-icon">{{ reward.icon }}</div>
       <div class="reward-card-title">{{ reward.title }}</div>
       {% if reward.description %}
       <div class="reward-card-desc">{{ reward.description }}</div>
       {% endif %}
       <div class="reward-card-cost">{{ reward.points_cost }} pts</div>
       {% if not reward.is_active %}
-        <span class="badge badge-grey">Inactive</span>
+        <span class="badge badge-grey">Hidden from kids</span>
       {% endif %}
+      <div class="reward-admin-actions">
+        <a href="{% url 'reward_edit' reward.pk %}" class="btn btn-outline btn-sm">Edit</a>
+        <form method="post" action="{% url 'reward_toggle' reward.pk %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline btn-sm">{% if reward.is_active %}Hide{% else %}Show{% endif %}</button>
+        </form>
+        <form method="post" action="{% url 'reward_delete' reward.pk %}" onsubmit="return confirm('Delete “{{ reward.title|escapejs }}”? This removes its request history too.')" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline btn-sm btn-danger-outline">Delete</button>
+        </form>
+      </div>
     </div>
     {% endfor %}
   </div>
