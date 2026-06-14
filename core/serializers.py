@@ -1,3 +1,5 @@
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from .models import CustomUser, Task, Behavior, Reward, RewardRedemption, PointTransaction, Notification
 
@@ -73,20 +75,24 @@ class NotificationSerializer(serializers.ModelSerializer):
 class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password', 'is_parent', 'is_kid']
+        # Public self-registration only ever creates a parent starting a new
+        # family — matching the web /register/ flow. Roles are NOT client-settable
+        # (otherwise anyone could mint orphan kids or arbitrary accounts via the API).
+        fields = ['username', 'email', 'password']
         extra_kwargs = {'password': {'write_only': True}}
 
-    def validate(self, data):
-        if data.get('is_parent') and data.get('is_kid'):
-            raise serializers.ValidationError("A user cannot be both a parent and a kid.")
-        return data
+    def validate_password(self, value):
+        try:
+            password_validation.validate_password(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages))
+        return value
 
     def create(self, validated_data):
         user = CustomUser(
             username=validated_data['username'],
             email=validated_data.get('email', ''),
-            is_parent=validated_data.get('is_parent', False),
-            is_kid=validated_data.get('is_kid', False),
+            is_parent=True,
         )
         user.set_password(validated_data['password'])
         user.save()

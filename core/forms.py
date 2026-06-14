@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth import password_validation
 from django.contrib.auth.forms import AuthenticationForm
 from .models import CustomUser, Task, Behavior, Reward
 
@@ -182,8 +183,16 @@ class ParentRegistrationForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get('password') != cleaned.get('confirm_password'):
+        password = cleaned.get('password')
+        if password and password != cleaned.get('confirm_password'):
             raise forms.ValidationError("Passwords do not match.")
+        # Parents pick their own password, so enforce the project's strength rules
+        # (kids get simple parent-chosen passwords via AddKidForm and are exempt).
+        if password:
+            try:
+                password_validation.validate_password(password)
+            except forms.ValidationError as exc:
+                self.add_error('password', exc)
         return cleaned
 
     def save(self, commit=True):
@@ -213,6 +222,21 @@ class AddKidForm(forms.ModelForm):
             'username': forms.TextInput(attrs={'placeholder': 'Username (e.g. eva_2014)'}),
             'first_name': forms.TextInput(attrs={'placeholder': "Kid's first name"}),
         }
+
+    def clean_username(self):
+        # Usernames are global (Django auth), so a name another family already
+        # used would otherwise fail with a confusing generic error. Catch it
+        # early and suggest an available alternative.
+        username = self.cleaned_data['username']
+        if CustomUser.objects.filter(username__iexact=username).exists():
+            suggestion, i = f"{username}2", 2
+            while CustomUser.objects.filter(username__iexact=suggestion).exists():
+                i += 1
+                suggestion = f"{username}{i}"
+            raise forms.ValidationError(
+                f"The username '{username}' is already taken. Try '{suggestion}' instead."
+            )
+        return username
 
     def save(self, parent, commit=True):
         user = super().save(commit=False)

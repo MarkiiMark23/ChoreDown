@@ -192,7 +192,9 @@ class RewardNotificationTests(TestCase):
         redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)
 
         self.client.force_login(self.parent)
-        response = self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+        # Notification email is sent on transaction commit, so capture the callback.
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
 
         self.assertRedirects(response, reverse('redemption_list'))
         self.kid.refresh_from_db()
@@ -392,3 +394,60 @@ class FamilyCodeTests(TestCase):
         self.assertRedirects(resp, reverse('parent_dashboard'))
         self.kid.refresh_from_db()
         self.assertEqual(self.kid.points, 10)
+
+
+class RegistrationValidationTests(TestCase):
+    def _register(self, **extra):
+        data = {
+            'username': 'newdad', 'first_name': 'Dad', 'last_name': 'X',
+            'email': 'newdad@example.com', 'avatar_color': '#6C63FF',
+            'password': 'pass12345', 'confirm_password': 'pass12345',
+        }
+        data.update(extra)
+        return self.client.post(reverse('register'), data)
+
+    def test_parent_weak_password_is_rejected(self):
+        # All-numeric + too short trips the configured validators.
+        resp = self._register(password='123', confirm_password='123')
+        self.assertEqual(resp.status_code, 200)  # re-rendered with errors
+        self.assertFalse(CustomUser.objects.filter(username='newdad').exists())
+
+    def test_parent_strong_password_is_accepted(self):
+        resp = self._register(password='Tr0ub4dour!', confirm_password='Tr0ub4dour!')
+        self.assertRedirects(resp, reverse('dashboard'), fetch_redirect_response=False)
+        self.assertTrue(CustomUser.objects.filter(username='newdad', is_parent=True).exists())
+
+    def test_kid_keeps_simple_password(self):
+        # Kids are intentionally exempt from strength rules (parent picks it).
+        parent = CustomUser.objects.create_user(username='p', password='pass12345', is_parent=True)
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('add_kid'), {
+            'username': 'lil', 'first_name': 'Lil', 'avatar_color': '#6C63FF', 'password': '123',
+        })
+        self.assertRedirects(resp, reverse('parent_dashboard'))
+        self.assertTrue(CustomUser.objects.filter(username='lil', is_kid=True).exists())
+
+    def test_taken_kid_username_suggests_alternative(self):
+        CustomUser.objects.create_user(username='eva', password='pass12345', is_kid=True)
+        parent = CustomUser.objects.create_user(username='p', password='pass12345', is_parent=True)
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('add_kid'), {
+            'username': 'eva', 'first_name': 'Eva', 'avatar_color': '#6C63FF', 'password': 'pass12345',
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "eva2")  # suggested alternative
+
+    def test_api_registration_ignores_role_and_requires_strong_password(self):
+        # Weak password rejected.
+        weak = self.client.post(reverse('api_register'), {
+            'username': 'apidad', 'password': '123',
+        })
+        self.assertEqual(weak.status_code, 400)
+        # Even if a client asks for is_kid, the public endpoint only makes parents.
+        ok = self.client.post(reverse('api_register'), {
+            'username': 'apidad', 'password': 'Tr0ub4dour!', 'is_kid': True, 'is_parent': False,
+        })
+        self.assertEqual(ok.status_code, 201)
+        user = CustomUser.objects.get(username='apidad')
+        self.assertTrue(user.is_parent)
+        self.assertFalse(user.is_kid)
