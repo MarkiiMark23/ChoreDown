@@ -37,16 +37,29 @@ from .forms import (
 # ---------------------------------------------------------------------------
 
 def _award_points(user, amount, transaction_type, description):
-    """Add or subtract points and record the transaction."""
-    user.refresh_from_db(fields=['points'])
-    user.points = max(0, user.points + amount)
-    user.save(update_fields=['points'])
-    PointTransaction.objects.create(
-        user=user,
-        amount=amount,
-        transaction_type=transaction_type,
-        description=description,
-    )
+    """Add or subtract points and record the transaction.
+
+    The balance is floored at 0 so kids never see a negative score. We record
+    the amount *actually* applied (after clamping), not the requested amount, so
+    the point-history ledger always sums back to the displayed balance.
+
+    The row is locked with select_for_update so two concurrent awards (e.g. a
+    parent approving two rewards at once) can't both read the same balance and
+    double-deduct. (No-op on SQLite, enforced on Postgres.)
+    """
+    with db_transaction.atomic():
+        locked = CustomUser.objects.select_for_update().get(pk=user.pk)
+        new_total = max(0, locked.points + amount)
+        applied = new_total - locked.points
+        locked.points = new_total
+        locked.save(update_fields=['points'])
+        PointTransaction.objects.create(
+            user=locked,
+            amount=applied,
+            transaction_type=transaction_type,
+            description=description,
+        )
+    user.points = new_total  # keep the caller's in-memory copy in sync
 
 
 def _suggested_task_points(task):
@@ -76,7 +89,10 @@ def _create_notification(recipient, notification_type, title, message, actor=Non
         email_status='queued' if wants_email else 'skipped',
     )
     if wants_email:
-        _send_notification_email(notification)
+        # Send after the surrounding DB transaction commits: never hold DB locks
+        # on a slow SMTP, and never email about a change that gets rolled back.
+        # (Outside a transaction, on_commit runs immediately.)
+        db_transaction.on_commit(lambda: _send_notification_email(notification))
     return notification
 
 
@@ -577,6 +593,10 @@ def redemption_list_view(request):
 def redemption_resolve_view(request, pk, action):
     if not request.user.is_parent:
         return redirect('dashboard')
+    # State-changing action: only act on POST so link prefetchers / scanners
+    # can't silently approve rewards and deduct a kid's points.
+    if request.method != 'POST':
+        return redirect('redemption_list')
     redemption = get_object_or_404(
         RewardRedemption, pk=pk, reward__parent=request.user.family_head, status='pending'
     )

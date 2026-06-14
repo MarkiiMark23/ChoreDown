@@ -192,7 +192,9 @@ class RewardNotificationTests(TestCase):
         redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)
 
         self.client.force_login(self.parent)
-        response = self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+        # Notification email is sent on transaction commit, so capture the callback.
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
 
         self.assertRedirects(response, reverse('redemption_list'))
         self.kid.refresh_from_db()
@@ -204,13 +206,25 @@ class RewardNotificationTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn(self.kid.email, mail.outbox[0].to)
 
+    def test_redemption_resolve_ignores_get_requests(self):
+        # A GET (e.g. link prefetch or scanner) must not approve or deduct points.
+        redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)
+
+        self.client.force_login(self.parent)
+        self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+
+        self.kid.refresh_from_db()
+        redemption.refresh_from_db()
+        self.assertEqual(self.kid.points, 50)            # unchanged
+        self.assertEqual(redemption.status, 'pending')   # still pending
+
     def test_reward_denial_respects_none_notification_preference(self):
         self.kid.notification_preference = 'none'
         self.kid.save()
         redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)
 
         self.client.force_login(self.parent)
-        self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'deny']))
+        self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'deny']))
 
         self.assertFalse(Notification.objects.filter(recipient=self.kid).exists())
 
@@ -223,12 +237,100 @@ class RewardNotificationTests(TestCase):
         self.kid.save()
 
         self.client.force_login(self.parent)
-        self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+        self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
 
         self.kid.refresh_from_db()
         redemption.refresh_from_db()
         self.assertEqual(self.kid.points, 10)            # nothing deducted
         self.assertEqual(redemption.status, 'pending')   # still pending
+
+
+class PageRenderSmokeTests(TestCase):
+    """Render every main page as a parent and a kid to catch template/url errors."""
+
+    def setUp(self):
+        self.parent = CustomUser.objects.create_user(
+            username='smoke_parent', password='pass12345', is_parent=True,
+        )
+        self.kid = CustomUser.objects.create_user(
+            username='smoke_kid', password='pass12345', is_kid=True,
+            parent_account=self.parent, points=40,
+        )
+        self.reward = Reward.objects.create(title='Treat', points_cost=20, parent=self.parent)
+        self.task = Task.objects.create(
+            title='Tidy', points_value=10, parent=self.parent, assigned_to=self.kid,
+        )
+
+    def test_parent_pages_render(self):
+        self.client.force_login(self.parent)
+        # 'dashboard' is a role dispatcher that 302-redirects; tested separately below.
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 302)
+        for name in [
+            'parent_dashboard', 'add_kid', 'task_list', 'task_create',
+            'behavior_list', 'behavior_log', 'reward_list', 'reward_create',
+            'redemption_list', 'leaderboard', 'profile', 'notification_list',
+            'point_history',
+        ]:
+            with self.subTest(page=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+    def test_kid_pages_render(self):
+        self.client.force_login(self.kid)
+        for name in [
+            'dashboard', 'kid_dashboard', 'task_list', 'reward_list',
+            'leaderboard', 'profile', 'notification_list', 'point_history',
+        ]:
+            with self.subTest(page=name):
+                resp = self.client.get(reverse(name))
+                # dashboard redirects kids to kid_dashboard; everything else is 200.
+                self.assertIn(resp.status_code, (200, 302), name)
+        # Kid-specific action pages.
+        self.assertEqual(
+            self.client.get(reverse('task_complete', args=[self.task.pk])).status_code, 200,
+        )
+        self.assertEqual(
+            self.client.get(reverse('reward_redeem', args=[self.reward.pk])).status_code, 200,
+        )
+
+    def test_public_pages_render(self):
+        for name in ['home', 'login', 'register']:
+            with self.subTest(page=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+
+class PointLedgerTests(TestCase):
+    def setUp(self):
+        self.parent = CustomUser.objects.create_user(
+            username='parent', password='pass12345', is_parent=True,
+        )
+        self.kid = CustomUser.objects.create_user(
+            username='kid', password='pass12345', is_kid=True,
+            parent_account=self.parent, notification_preference='none',
+        )
+
+    def test_penalty_below_zero_keeps_ledger_matching_balance(self):
+        from .views import _award_points
+
+        # Earn 5, then take a 10-point penalty: balance floors at 0, and the
+        # ledger records only what was actually applied (-5), so the running
+        # total a kid sees in their history still sums back to their balance.
+        _award_points(self.kid, 5, 'behavior_positive', 'Tidied up')
+        _award_points(self.kid, -10, 'penalty', 'Broke a window')
+
+        self.kid.refresh_from_db()
+        ledger = sum(t.amount for t in PointTransaction.objects.filter(user=self.kid))
+        self.assertEqual(self.kid.points, 0)
+        self.assertEqual(ledger, 0)
+        self.assertEqual(self.kid.points, ledger)
+
+    def test_normal_award_records_full_amount(self):
+        from .views import _award_points
+
+        _award_points(self.kid, 8, 'behavior_positive', 'Helped with dishes')
+
+        self.kid.refresh_from_db()
+        self.assertEqual(self.kid.points, 8)
+        self.assertEqual(PointTransaction.objects.get(user=self.kid).amount, 8)
 
 
 class FamilyCodeTests(TestCase):
@@ -292,3 +394,144 @@ class FamilyCodeTests(TestCase):
         self.assertRedirects(resp, reverse('parent_dashboard'))
         self.kid.refresh_from_db()
         self.assertEqual(self.kid.points, 10)
+
+
+class FullLifecycleIntegrationTests(TestCase):
+    """Drive the whole product through the real web views, end to end, and prove
+    the point ledger reconciles to the displayed balance at every step."""
+
+    def _ledger(self, user):
+        return sum(t.amount for t in PointTransaction.objects.filter(user=user))
+
+    def test_register_assign_complete_approve_redeem_resolve(self):
+        # 1. Parent self-registers (strong password required).
+        resp = self.client.post(reverse('register'), {
+            'username': 'momqa', 'first_name': 'Mom', 'last_name': 'Q',
+            'email': 'momqa@example.com', 'avatar_color': '#6C63FF',
+            'password': 'Tr0ub4dour!', 'confirm_password': 'Tr0ub4dour!',
+        })
+        self.assertRedirects(resp, reverse('dashboard'), fetch_redirect_response=False)
+        parent = CustomUser.objects.get(username='momqa')
+        self.assertTrue(parent.is_parent)
+
+        # 2. Parent adds a kid (simple password allowed).
+        resp = self.client.post(reverse('add_kid'), {
+            'username': 'kidqa', 'first_name': 'Kid', 'avatar_color': '#4CAF50', 'password': '1234',
+        })
+        self.assertRedirects(resp, reverse('parent_dashboard'))
+        kid = CustomUser.objects.get(username='kidqa')
+        self.assertEqual(kid.parent_account_id, parent.id)
+
+        # 3. Parent assigns a task.
+        resp = self.client.post(reverse('task_create'), {
+            'title': 'Dishes', 'description': '', 'assigned_to': kid.id,
+            'category': 'chores', 'priority': 2, 'points_value': 20, 'preset': '',
+        })
+        self.assertRedirects(resp, reverse('task_list'))
+        task = Task.objects.get(assigned_to=kid, title='Dishes')
+        self.assertEqual(task.status, 'assigned')
+
+        # 4. Kid logs in and submits the task.
+        self.client.force_login(kid)
+        resp = self.client.post(reverse('task_complete', args=[task.pk]), {
+            'fun_rating': 4, 'effort_note': 'done',
+        })
+        self.assertRedirects(resp, reverse('kid_dashboard'))
+        task.refresh_from_db()
+        kid.refresh_from_db()
+        self.assertEqual(task.status, 'submitted')
+        self.assertEqual(kid.points, 0)  # not awarded until parent approves
+
+        # 5. Parent approves with full points.
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('task_review', args=[task.pk]), {
+            'action': 'approve', 'points_earned': 20, 'parent_feedback': 'great',
+        })
+        self.assertRedirects(resp, reverse('parent_dashboard'))
+        kid.refresh_from_db()
+        self.assertEqual(kid.points, 20)
+        self.assertEqual(self._ledger(kid), 20)  # ledger == balance
+
+        # 6. Parent creates a reward the kid can afford.
+        resp = self.client.post(reverse('reward_create'), {
+            'title': 'Movie night', 'description': '', 'points_cost': 15,
+            'icon': '🎬', 'is_active': 'on', 'preset': '',
+        })
+        self.assertRedirects(resp, reverse('reward_list'))
+        reward = Reward.objects.get(parent=parent, title='Movie night')
+
+        # 7. Kid redeems it (POST confirm).
+        self.client.force_login(kid)
+        resp = self.client.post(reverse('reward_redeem', args=[reward.pk]))
+        self.assertRedirects(resp, reverse('kid_dashboard'))
+        redemption = RewardRedemption.objects.get(kid=kid, reward=reward)
+        self.assertEqual(redemption.status, 'pending')
+        kid.refresh_from_db()
+        self.assertEqual(kid.points, 20)  # nothing deducted until parent approves
+
+        # 8. Parent approves the redemption (POST only).
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+        self.assertRedirects(resp, reverse('redemption_list'))
+        redemption.refresh_from_db()
+        kid.refresh_from_db()
+        self.assertEqual(redemption.status, 'approved')
+        self.assertEqual(kid.points, 5)            # 20 earned - 15 spent
+        self.assertEqual(self._ledger(kid), 5)     # ledger still reconciles
+
+
+class RegistrationValidationTests(TestCase):
+    def _register(self, **extra):
+        data = {
+            'username': 'newdad', 'first_name': 'Dad', 'last_name': 'X',
+            'email': 'newdad@example.com', 'avatar_color': '#6C63FF',
+            'password': 'pass12345', 'confirm_password': 'pass12345',
+        }
+        data.update(extra)
+        return self.client.post(reverse('register'), data)
+
+    def test_parent_weak_password_is_rejected(self):
+        # All-numeric + too short trips the configured validators.
+        resp = self._register(password='123', confirm_password='123')
+        self.assertEqual(resp.status_code, 200)  # re-rendered with errors
+        self.assertFalse(CustomUser.objects.filter(username='newdad').exists())
+
+    def test_parent_strong_password_is_accepted(self):
+        resp = self._register(password='Tr0ub4dour!', confirm_password='Tr0ub4dour!')
+        self.assertRedirects(resp, reverse('dashboard'), fetch_redirect_response=False)
+        self.assertTrue(CustomUser.objects.filter(username='newdad', is_parent=True).exists())
+
+    def test_kid_keeps_simple_password(self):
+        # Kids are intentionally exempt from strength rules (parent picks it).
+        parent = CustomUser.objects.create_user(username='p', password='pass12345', is_parent=True)
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('add_kid'), {
+            'username': 'lil', 'first_name': 'Lil', 'avatar_color': '#6C63FF', 'password': '123',
+        })
+        self.assertRedirects(resp, reverse('parent_dashboard'))
+        self.assertTrue(CustomUser.objects.filter(username='lil', is_kid=True).exists())
+
+    def test_taken_kid_username_suggests_alternative(self):
+        CustomUser.objects.create_user(username='eva', password='pass12345', is_kid=True)
+        parent = CustomUser.objects.create_user(username='p', password='pass12345', is_parent=True)
+        self.client.force_login(parent)
+        resp = self.client.post(reverse('add_kid'), {
+            'username': 'eva', 'first_name': 'Eva', 'avatar_color': '#6C63FF', 'password': 'pass12345',
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "eva2")  # suggested alternative
+
+    def test_api_registration_ignores_role_and_requires_strong_password(self):
+        # Weak password rejected.
+        weak = self.client.post(reverse('api_register'), {
+            'username': 'apidad', 'password': '123',
+        })
+        self.assertEqual(weak.status_code, 400)
+        # Even if a client asks for is_kid, the public endpoint only makes parents.
+        ok = self.client.post(reverse('api_register'), {
+            'username': 'apidad', 'password': 'Tr0ub4dour!', 'is_kid': True, 'is_parent': False,
+        })
+        self.assertEqual(ok.status_code, 201)
+        user = CustomUser.objects.get(username='apidad')
+        self.assertTrue(user.is_parent)
+        self.assertFalse(user.is_kid)

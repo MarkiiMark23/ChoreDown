@@ -18,8 +18,8 @@
       </div>
     </div>
     <div class="redemption-actions">
-      <a href="{% url 'redemption_resolve' r.pk 'approve' %}" class="btn btn-green">✓ Approve</a>
-      <a href="{% url 'redemption_resolve' r.pk 'deny' %}" class="btn btn-outline">Not this time</a>
+      <form method="post" action="{% url 'redemption_resolve' r.pk 'approve' %}" style="display:inline">{% csrf_token %}<button type="submit" class="btn btn-green">✓ Approve</button></form>
+      <form method="post" action="{% url 'redemption_resolve' r.pk 'deny' %}" style="display:inline">{% csrf_token %}<button type="submit" class="btn btn-outline">Not this time</button></form>
     </div>
   </div>
   {% endfor %}
