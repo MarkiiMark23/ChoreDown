@@ -584,6 +584,10 @@ def redemption_list_view(request):
 def redemption_resolve_view(request, pk, action):
     if not request.user.is_parent:
         return redirect('dashboard')
+    # State-changing action: only act on POST so link prefetchers / scanners
+    # can't silently approve rewards and deduct a kid's points.
+    if request.method != 'POST':
+        return redirect('redemption_list')
     redemption = get_object_or_404(
         RewardRedemption, pk=pk, reward__parent=request.user.family_head, status='pending'
     )

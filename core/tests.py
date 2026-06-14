@@ -192,7 +192,7 @@ class RewardNotificationTests(TestCase):
         redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)
 
         self.client.force_login(self.parent)
-        response = self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+        response = self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
 
         self.assertRedirects(response, reverse('redemption_list'))
         self.kid.refresh_from_db()
@@ -204,13 +204,25 @@ class RewardNotificationTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn(self.kid.email, mail.outbox[0].to)
 
+    def test_redemption_resolve_ignores_get_requests(self):
+        # A GET (e.g. link prefetch or scanner) must not approve or deduct points.
+        redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)
+
+        self.client.force_login(self.parent)
+        self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+
+        self.kid.refresh_from_db()
+        redemption.refresh_from_db()
+        self.assertEqual(self.kid.points, 50)            # unchanged
+        self.assertEqual(redemption.status, 'pending')   # still pending
+
     def test_reward_denial_respects_none_notification_preference(self):
         self.kid.notification_preference = 'none'
         self.kid.save()
         redemption = RewardRedemption.objects.create(kid=self.kid, reward=self.reward)
 
         self.client.force_login(self.parent)
-        self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'deny']))
+        self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'deny']))
 
         self.assertFalse(Notification.objects.filter(recipient=self.kid).exists())
 
@@ -223,7 +235,7 @@ class RewardNotificationTests(TestCase):
         self.kid.save()
 
         self.client.force_login(self.parent)
-        self.client.get(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
+        self.client.post(reverse('redemption_resolve', args=[redemption.pk, 'approve']))
 
         self.kid.refresh_from_db()
         redemption.refresh_from_db()
