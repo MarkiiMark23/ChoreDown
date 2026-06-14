@@ -243,6 +243,59 @@ class RewardNotificationTests(TestCase):
         self.assertEqual(redemption.status, 'pending')   # still pending
 
 
+class PageRenderSmokeTests(TestCase):
+    """Render every main page as a parent and a kid to catch template/url errors."""
+
+    def setUp(self):
+        self.parent = CustomUser.objects.create_user(
+            username='smoke_parent', password='pass12345', is_parent=True,
+        )
+        self.kid = CustomUser.objects.create_user(
+            username='smoke_kid', password='pass12345', is_kid=True,
+            parent_account=self.parent, points=40,
+        )
+        self.reward = Reward.objects.create(title='Treat', points_cost=20, parent=self.parent)
+        self.task = Task.objects.create(
+            title='Tidy', points_value=10, parent=self.parent, assigned_to=self.kid,
+        )
+
+    def test_parent_pages_render(self):
+        self.client.force_login(self.parent)
+        # 'dashboard' is a role dispatcher that 302-redirects; tested separately below.
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 302)
+        for name in [
+            'parent_dashboard', 'add_kid', 'task_list', 'task_create',
+            'behavior_list', 'behavior_log', 'reward_list', 'reward_create',
+            'redemption_list', 'leaderboard', 'profile', 'notification_list',
+            'point_history',
+        ]:
+            with self.subTest(page=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+    def test_kid_pages_render(self):
+        self.client.force_login(self.kid)
+        for name in [
+            'dashboard', 'kid_dashboard', 'task_list', 'reward_list',
+            'leaderboard', 'profile', 'notification_list', 'point_history',
+        ]:
+            with self.subTest(page=name):
+                resp = self.client.get(reverse(name))
+                # dashboard redirects kids to kid_dashboard; everything else is 200.
+                self.assertIn(resp.status_code, (200, 302), name)
+        # Kid-specific action pages.
+        self.assertEqual(
+            self.client.get(reverse('task_complete', args=[self.task.pk])).status_code, 200,
+        )
+        self.assertEqual(
+            self.client.get(reverse('reward_redeem', args=[self.reward.pk])).status_code, 200,
+        )
+
+    def test_public_pages_render(self):
+        for name in ['home', 'login', 'register']:
+            with self.subTest(page=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+
 class PointLedgerTests(TestCase):
     def setUp(self):
         self.parent = CustomUser.objects.create_user(
